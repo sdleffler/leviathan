@@ -1,0 +1,9 @@
+[package]
+name = "leviathan"
+version = "0.1.0"
+authors = ["Sean Leffler <sean@errno.com>"]
+license = "MIT"
+
+
+[dev-dependencies]
+compiletest_rs = "0.2.4"
