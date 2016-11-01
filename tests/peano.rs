@@ -1,7 +1,7 @@
 extern crate leviathan as lev;
 
 
-use lev::peano::*;
+use lev::typehack::peano::*;
 
 
 #[test]

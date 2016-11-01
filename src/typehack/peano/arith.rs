@@ -39,13 +39,26 @@ pub trait NatMul<N: Nat>: Nat {
 }
 
 
-impl<N: Nat> NatMul<Z> for N {
+impl<N: Nat> NatMul<N> for Z {
     type Result = Z;
 }
 
 
-impl<N: Nat, M: Nat> NatMul<S<M>> for N
-    where N: NatMul<M> + NatAdd<<N as NatMul<M>>::Result>
+impl<N: Nat, M: Nat> NatMul<M> for S<N>
+    where N: NatMul<M>,
+          M: NatAdd<<N as NatMul<M>>::Result>
 {
-    type Result = <N as NatAdd<<N as NatMul<M>>::Result>>::Result;
+    type Result = <M as NatAdd<<N as NatMul<M>>::Result>>::Result;
 }
+
+
+// impl<N: Nat> NatMul<Z> for N {
+//     type Result = Z;
+// }
+//
+//
+// impl<N: Nat, M: Nat> NatMul<S<M>> for N
+//     where N: NatMul<M> + NatAdd<<N as NatMul<M>>::Result>
+// {
+//     type Result = <N as NatAdd<<N as NatMul<M>>::Result>>::Result;
+// }

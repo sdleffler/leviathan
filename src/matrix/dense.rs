@@ -1,58 +1,196 @@
-use array::storage::*;
+use std::mem;
+use std::ops::{AddAssign, SubAssign, Mul, Index, IndexMut};
+use std::ptr;
 
+use array::storage::*;
+use matrix::traits::*;
+use num::traits::*;
 use typehack::peano::*;
 
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[repr(C)]
-pub struct Mat<T, M: Nat, N: Nat>(Storage<T, <M as NatMul<N>>::Result>)
+pub struct DenseMat<T: Copy, M: Nat, N: Nat>(Storage<T, <M as NatMul<N>>::Result>)
     where M: NatMul<N>,
           <M as NatMul<N>>::Result: Link<T>;
 
 
-// THEY SAID I WAS CRAZY
-pub type Mat1x1<T> = Mat<T, S<Z>, S<Z>>;
-pub type Mat1x2<T> = Mat<T, S<Z>, S<S<Z>>>;
-pub type Mat1x3<T> = Mat<T, S<Z>, S<S<S<Z>>>>;
-pub type Mat1x4<T> = Mat<T, S<Z>, S<S<S<S<Z>>>>>;
-pub type Mat1x5<T> = Mat<T, S<Z>, S<S<S<S<S<Z>>>>>>;
-pub type Mat1x6<T> = Mat<T, S<Z>, S<S<S<S<S<S<Z>>>>>>>;
+impl<T: Copy, M: Nat, N: Nat> Copy for DenseMat<T, M, N>
+    where DenseMat<T, M, N>: Clone,
+          M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>,
+          Storage<T, <M as NatMul<N>>::Result>: Copy
+{
+}
 
-// THEY SAID I WAS MAD
-pub type Mat2x1<T> = Mat<T, S<S<Z>>, S<Z>>;
-pub type Mat2x2<T> = Mat<T, S<S<Z>>, S<S<Z>>>;
-pub type Mat2x3<T> = Mat<T, S<S<Z>>, S<S<S<Z>>>>;
-pub type Mat2x4<T> = Mat<T, S<S<Z>>, S<S<S<S<Z>>>>>;
-pub type Mat2x5<T> = Mat<T, S<S<Z>>, S<S<S<S<S<Z>>>>>>;
-pub type Mat2x6<T> = Mat<T, S<S<Z>>, S<S<S<S<S<S<Z>>>>>>>;
 
-// BUT I'LL SHOW THEM
-pub type Mat3x1<T> = Mat<T, S<S<S<Z>>>, S<Z>>;
-pub type Mat3x2<T> = Mat<T, S<S<S<Z>>>, S<S<Z>>>;
-pub type Mat3x3<T> = Mat<T, S<S<S<Z>>>, S<S<S<Z>>>>;
-pub type Mat3x4<T> = Mat<T, S<S<S<Z>>>, S<S<S<S<Z>>>>>;
-pub type Mat3x5<T> = Mat<T, S<S<S<Z>>>, S<S<S<S<S<Z>>>>>>;
-pub type Mat3x6<T> = Mat<T, S<S<S<Z>>>, S<S<S<S<S<S<Z>>>>>>>;
+impl<'a, T: Copy, M: Nat, N: Nat> From<&'a [T]> for DenseMat<T, M, N>
+    where T: Copy,
+          M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>
+{
+    fn from(slice: &[T]) -> Self {
+        DenseMat(Storage::from_slice(slice))
+    }
+}
 
-// I'LL SHOW THEM ALL
-pub type Mat4x1<T> = Mat<T, S<S<S<S<Z>>>>, S<Z>>;
-pub type Mat4x2<T> = Mat<T, S<S<S<S<Z>>>>, S<S<Z>>>;
-pub type Mat4x3<T> = Mat<T, S<S<S<S<Z>>>>, S<S<S<Z>>>>;
-pub type Mat4x4<T> = Mat<T, S<S<S<S<Z>>>>, S<S<S<S<Z>>>>>;
-pub type Mat4x5<T> = Mat<T, S<S<S<S<Z>>>>, S<S<S<S<S<Z>>>>>>;
-pub type Mat4x6<T> = Mat<T, S<S<S<S<Z>>>>, S<S<S<S<S<S<Z>>>>>>>;
 
-// THE DEPTH OF MY MADNESS
-pub type Mat5x1<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<Z>>;
-pub type Mat5x2<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<S<Z>>>;
-pub type Mat5x3<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<S<S<Z>>>>;
-pub type Mat5x4<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<S<S<S<Z>>>>>;
-pub type Mat5x5<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<S<S<S<S<Z>>>>>>;
-pub type Mat5x6<T> = Mat<T, S<S<S<S<S<Z>>>>>, S<S<S<S<S<S<Z>>>>>>>;
+impl<T: Copy, M: Nat, N: Nat> Matrix for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>
+{
+    type Rows = M;
+    type Cols = N;
 
-// and the sum total of my wit
-pub type Mat6x1<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<Z>>;
-pub type Mat6x2<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<S<Z>>>;
-pub type Mat6x3<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<S<S<Z>>>>;
-pub type Mat6x4<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<S<S<S<Z>>>>>;
-pub type Mat6x5<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<S<S<S<S<Z>>>>>>;
-pub type Mat6x6<T> = Mat<T, S<S<S<S<S<S<Z>>>>>>, S<S<S<S<S<S<Z>>>>>>>;
+    type Scalar = T;
+}
+
+
+impl<T: Copy, N: Nat> Square for DenseMat<T, N, N>
+    where N: NatMul<N>,
+          <N as NatMul<N>>::Result: Link<T>
+{
+}
+
+
+impl<T: Copy, M: Nat, N: Nat> MatrixTranspose for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>,
+          N: NatMul<M, Result = <M as NatMul<N>>::Result>
+{
+    type Output = DenseMat<T, N, M>;
+
+    fn transpose(self) -> DenseMat<T, N, M> {
+        let mut res: Self::Output; // Transposing in-place is more work than it's worth.
+
+        unsafe {
+            res = mem::uninitialized(); // Give ourselves some scratch space.
+
+            for i in 0..M::as_usize() {
+                for j in 0..N::as_usize() {
+                    ptr::write(&mut res.0[j + i * M::as_usize()],
+                               self.0[i + j * N::as_usize()]);
+                }
+            }
+
+            // `res` should now be fully initialized.
+        }
+
+        res
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat> MatrixAdd for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>,
+          T: AddAssign
+{
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self {
+        for i in 0..N::as_usize() * M::as_usize() {
+            self.0[i] += rhs.0[i];
+        }
+
+        self
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat> MatrixSub for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>,
+          T: SubAssign
+{
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self {
+        for i in 0..N::as_usize() * M::as_usize() {
+            self.0[i] -= rhs.0[i];
+        }
+
+        self
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat, P: Nat> MatrixMul<DenseMat<T, N, P>> for DenseMat<T, M, N>
+    where M: NatMul<N> + NatMul<P>,
+          N: NatMul<P>,
+          <M as NatMul<N>>::Result: Link<T>,
+          <N as NatMul<P>>::Result: Link<T>,
+          <M as NatMul<P>>::Result: Link<T>,
+          T: AddAssign + Mul<Output = T> + Zero
+{
+    type Output = DenseMat<T, M, P>;
+
+    fn mul(self, rhs: DenseMat<T, N, P>) -> DenseMat<T, M, P> {
+        let mut output: DenseMat<T, M, P>;
+
+        unsafe {
+            output = mem::uninitialized();
+
+            for i in 0..M::as_usize() {
+                for j in 0..P::as_usize() {
+                    let mut sum = T::zero();
+
+                    for k in 0..N::as_usize() {
+                        sum += self[[k, i]] * rhs[[j, k]];
+                    }
+
+                    ptr::write(&mut output[[i, j]], sum); // Avoid dropping uninitialized memory.
+                }
+            }
+
+            // `output` should now be fully initialized.
+        }
+
+        output
+    }
+}
+
+
+impl<T: Copy, N: Nat> MatrixIdentity for DenseMat<T, N, N>
+    where N: NatMul<N>,
+          <N as NatMul<N>>::Result: Link<T>,
+          T: Zero + One
+{
+    fn eye() -> Self {
+        let mut res = DenseMat(Storage::from_elem(&T::zero()));
+
+        for i in 0..N::as_usize() {
+            res[[i, i]] = T::one();
+        }
+
+        res
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat> Index<[usize; 2]> for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>
+{
+    type Output = T;
+
+    #[inline]
+    fn index(&self, idx: [usize; 2]) -> &T {
+        assert!(idx[0] < N::as_usize());
+
+        &self.0[idx[0] + idx[1] * N::as_usize()]
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat> IndexMut<[usize; 2]> for DenseMat<T, M, N>
+    where M: NatMul<N>,
+          <M as NatMul<N>>::Result: Link<T>
+{
+    #[inline]
+    fn index_mut(&mut self, idx: [usize; 2]) -> &mut T {
+        assert!(idx[0] < N::as_usize());
+
+        &mut self.0[idx[0] + idx[1] * N::as_usize()]
+    }
+}

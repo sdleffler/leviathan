@@ -10,7 +10,10 @@ pub trait Nat {
 }
 
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Z;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct S<N: Nat>(PhantomData<N>);
 
 
@@ -30,6 +33,6 @@ impl<N: Nat> Nat for S<N> {
 
 #[macro_export]
 macro_rules! peano_count {
-    ($elem:expr $(, $rest:expr)*) => ($crate::peano::S<peano_count!($($rest),*)>);
-    () => ($crate::peano::Z);
+    ($elem:expr $(, $rest:expr)*) => ($crate::typehack::peano::S<peano_count!($($rest),*)>);
+    () => ($crate::typehack::peano::Z);
 }
