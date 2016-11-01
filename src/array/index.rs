@@ -4,28 +4,16 @@ use typehack::peano::*;
 pub type Idx = usize;
 
 
-#[repr(C)]
 pub struct CCons<N> {
     idx: Idx,
     next: N,
 }
 
-
-#[repr(C)]
-pub struct CNil {
-    idx: Idx,
-}
+pub struct CNil;
 
 
 pub trait At<I: Nat> {
     fn at(&self) -> Idx;
-}
-
-
-impl At<Z> for CNil {
-    fn at(&self) -> Idx {
-        self.idx
-    }
 }
 
 
