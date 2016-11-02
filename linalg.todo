@@ -1,8 +1,4 @@
 Matrix multiplication:
-    ✔ StaticMat<M, N> * DynamicMat<P?, Q> => StaticMat<M, Q> where N and P are compatible @timestamp(2016-11-02 11:05) @done(2016-11-02 11:14) @project(Matrix multiplication)
-    ✔ StaticMat<M, N> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @timestamp(2016-11-02 11:14) @done(2016-11-02 11:19) @project(Matrix multiplication)
-    ✔ DynamicMat<M, N?> * StaticMat<P, Q> => StaticMat<M, Q> where N and P are compatible @done(2016-11-02 11:30) @project(Matrix multiplication)
-    ☐ DynamicMat<Dyn, N?> * StaticMat<P, Q> => DynamicMat<Dyn, Q> where N and P are compatible
 
 Matrix addition/subtraction:
     ☐ StaticMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible
@@ -21,6 +17,10 @@ Vector-matrix multiplication:
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+    ✔ StaticMat<M, N> * DynamicMat<P?, Q> => StaticMat<M, Q> where N and P are compatible @timestamp(2016-11-02 11:05) @done(2016-11-02 11:14) @project(Matrix multiplication)
+    ✔ StaticMat<M, N> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @timestamp(2016-11-02 11:14) @done(2016-11-02 11:19) @project(Matrix multiplication)
+    ✔ DynamicMat<M, N?> * StaticMat<P, Q> => StaticMat<M, Q> where N and P are compatible @done(2016-11-02 11:30) @project(Matrix multiplication)
+    ✔ DynamicMat<Dyn, N?> * StaticMat<P, Q> => DynamicMat<Dyn, Q> where N and P are compatible @timestamp(2016-11-02 11:31) @done(2016-11-02 11:33) @project(Matrix multiplication)
     ✔ StaticMat<M, N> +/- StaticMat<M, N> => StaticMat<M, N> @done(2016-11-02 11:06)
     ✔ StaticMat<M, N> => StaticMat<N, M> @done(2016-11-02 11:07) @project(Matrix transposition)
     ✔ StaticMat<M, N> * StaticMat<N, P> => StaticMat<M, P> @done(2016-11-02 11:05) @project(Matrix multiplication)

@@ -494,3 +494,34 @@ impl<T: Copy, M: Nat, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for 
         out
     }
 }
+
+
+impl<T: Copy, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for DynamicMat<T, Dyn, N>
+    where N: MatrixMulCompat<P>,
+          P: NatMul<Q>,
+          <P as NatMul<Q>>::Result: Link<T>,
+          T: Mul<Output = T> + AddAssign + Zero
+{
+    type Output = DynamicMat<T, Dyn, Q>;
+
+    fn mul(self, rhs: StaticMat<T, P, Q>) -> Self::Output {
+        let m = self.rows.reify();
+        let n = self.cols.reify();
+
+        debug_assert_eq!(n, P::as_usize());
+
+        let mut out = Self::Output::from_elem(m, T::zero());
+
+        let n = cmp::min(n, P::as_usize());
+
+        for i in 0..m {
+            for j in 0..Q::as_usize() {
+                for k in 0..n {
+                    out[[i, j]] += self[[i, k]] * rhs[[k, j]];
+                }
+            }
+        }
+
+        out
+    }
+}
