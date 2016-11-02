@@ -1,11 +1,9 @@
 use std::ops::{Index, IndexMut};
 
+use array::storage::*;
 use typehack::dim::*;
 use typehack::peano::*;
 use typehack::tvec::*;
-
-// use array::index::*;
-use array::storage::*;
 
 
 #[macro_export]

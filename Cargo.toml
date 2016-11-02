@@ -7,3 +7,9 @@ license = "MIT"
 
 [dev-dependencies]
 compiletest_rs = "0.2.4"
+
+
+[features]
+default = ["operators"]
+
+operators = []

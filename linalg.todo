@@ -1,0 +1,30 @@
+Matrix multiplication:
+    ✔ StaticMat<M, N> * DynamicMat<P?, Q> => StaticMat<M, Q> where N and P are compatible @timestamp(2016-11-02 11:05) @done(2016-11-02 11:14) @project(Matrix multiplication)
+    ✔ StaticMat<M, N> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @timestamp(2016-11-02 11:14) @done(2016-11-02 11:19) @project(Matrix multiplication)
+    ☐ DynamicMat<M, N?> * StaticMat<P, Q> => StaticMat<M, Q> where N and P are compatible
+    ☐ DynamicMat<Dyn, N?> * StaticMat<P, Q> => DynamicMat<Dyn, Q> where N and P are compatible
+
+Matrix addition/subtraction:
+    ☐ StaticMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible
+    ☐ DynamicMat<M?, N?> +/- StaticMat<P, Q> => StaticMat<P, Q> where M and P are compatible and N and Q are compatible
+
+Matrix transposition:
+    ☐ DynamicMat<M?, N?> => DynamicMat<N?, M?>
+
+Vector-matrix multiplication:
+    ☐ StaticMat<M, N> * StaticVec<N> => StaticVec<M>
+    ☐ DynamicMat<M, N?> * StaticVec<P> => StaticVec<M> where N and P are compatible
+    ☐ DynamicMat<Dyn, N?> * StaticVec<P> => DynamicVec<Dyn> where N and P are compatible
+    ☐ StaticVec<M> * StaticMat<M, N> => StaticMat<M, N>
+    ☐ DynamicMat<M, N> * StaticVec<N> => StaticMat<M, N>
+    ☐ DynamicMat<Dyn, M> * StaticVec<M> => DynamicMat<Dyn, M>
+
+＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
+Archive:
+    ✔ StaticMat<M, N> +/- StaticMat<M, N> => StaticMat<M, N> @done(2016-11-02 11:06)
+    ✔ StaticMat<M, N> => StaticMat<N, M> @done(2016-11-02 11:07) @project(Matrix transposition)
+    ✔ StaticMat<M, N> * StaticMat<N, P> => StaticMat<M, P> @done(2016-11-02 11:05) @project(Matrix multiplication)
+    ✔ DynamicMat<M, N?> * DynamicMat<P?, Q> => StaticMat<M, P> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
+    ✔ DynamicMat<Dyn, N?> * DynamicMat<P?, Q> => DynamicMat<Dyn, P> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
+    ✔ DynamicMat<M, N?> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
+    ✔ DynamicMat<Dyn, N?> * DynamicMat<P?, Dyn> => DynamicMat<Dyn, Dyn> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)

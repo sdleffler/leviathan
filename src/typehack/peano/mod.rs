@@ -6,6 +6,7 @@ pub use self::arith::*;
 
 
 pub trait Nat {
+    fn as_data() -> Self;
     fn as_usize() -> usize;
 }
 
@@ -18,6 +19,10 @@ pub struct S<N: Nat>(PhantomData<N>);
 
 
 impl Nat for Z {
+    fn as_data() -> Z {
+        Z
+    }
+
     fn as_usize() -> usize {
         0
     }
@@ -25,6 +30,10 @@ impl Nat for Z {
 
 
 impl<N: Nat> Nat for S<N> {
+    fn as_data() -> S<N> {
+        S(PhantomData::<N>)
+    }
+
     fn as_usize() -> usize {
         1 + N::as_usize()
     }

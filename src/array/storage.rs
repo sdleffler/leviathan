@@ -23,8 +23,8 @@ macro_rules! storage {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Pair<T, U> {
-    pub l: T,
-    pub r: U,
+    l: T,
+    r: U,
 }
 
 
