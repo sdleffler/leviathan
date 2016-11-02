@@ -1,4 +1,3 @@
-use typehack::peano::*;
 use typehack::dim::*;
 
 
@@ -62,13 +61,6 @@ pub trait Matrix {
 pub trait Square: Matrix<Rows = <Self as Matrix>::Cols> {}
 
 
-pub trait MatrixMulCompat<R: Dim>: Dim {}
-
-impl<S: Dim> MatrixMulCompat<S> for S {}
-impl<S: Nat> MatrixMulCompat<Dyn> for S {}
-impl<S: Nat> MatrixMulCompat<S> for Dyn {}
-
-
 pub trait MatrixTranspose: Matrix {
     type Output: Matrix<Rows = Self::Cols, Cols = Self::Rows>;
 
@@ -83,9 +75,13 @@ pub trait MatrixNeg: Matrix {
 }
 
 
-pub trait MatrixAdd<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
-    : Matrix {
-    type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
+pub trait MatrixAdd<RHS: Matrix = Self>: Matrix
+    where Self::Rows: DimCompat<RHS::Rows>,
+          Self::Cols: DimCompat<RHS::Cols>,
+          <Self::Output as Matrix>::Rows: DimCompat<Self::Rows> + DimCompat<RHS::Rows>,
+          <Self::Output as Matrix>::Cols: DimCompat<Self::Cols> + DimCompat<RHS::Cols>
+{
+    type Output: Matrix;
 
     fn add(self, RHS) -> Self::Output;
 }
@@ -100,7 +96,7 @@ pub trait MatrixSub<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
 
 
 pub trait MatrixMul<RHS: Matrix>: Matrix
-    where <Self as Matrix>::Cols: MatrixMulCompat<RHS::Rows>
+    where <Self as Matrix>::Cols: DimCompat<RHS::Rows>
 {
     type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
 

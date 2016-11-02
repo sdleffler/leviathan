@@ -1,4 +1,3 @@
-use std::cmp;
 use std::mem;
 use std::ops::{AddAssign, SubAssign, Mul, Index, IndexMut};
 use std::ptr;
@@ -18,8 +17,8 @@ use typehack::peano::*;
 // See linalg.todo.
 
 
-macro_rules! mm_loop_naive {
-    ($lhs:expr, $rhs:expr, $out:expr, $m:expr, $n:expr, $p:expr, $q:expr) => {
+macro_rules! mmul_loop_naive {
+    ($lhs:expr, $rhs:expr, $out:expr, $m:expr, $n:expr, $p:expr, $q:expr) => (
         {
             let mut out = $out;
 
@@ -28,13 +27,70 @@ macro_rules! mm_loop_naive {
 
             debug_assert_eq!(n, p);
 
-            let n = cmp::min(n, p);
+            let n = ::std::cmp::min(n, p);
 
             for i in 0..$m {
                 for j in 0..$q {
                     for k in 0..n {
                         out[[i, j]] += $lhs[[i, k]] * $rhs[[k, j]];
                     }
+                }
+            }
+
+            out
+        }
+    );
+}
+
+
+macro_rules! madd_inplace {
+    ($op:tt, $lhs:expr, $rhs:expr, $m:expr, $n:expr) => (madd_inplace!($op, $lhs, $rhs, $m, $n, $m, $n));
+    ($op:tt, $lhs:expr, $rhs:expr, $m:expr, $n:expr, $p:expr, $q:expr) => (
+        {
+            let mut lhs = $lhs;
+
+            let m = $m;
+            let n = $n;
+            let p = $p;
+            let q = $q;
+
+            debug_assert_eq!(m, p);
+            debug_assert_eq!(n, q);
+
+            let m = ::std::cmp::min(m, p);
+            let n = ::std::cmp::min(n, q);
+
+            for i in 0..m {
+                for j in 0..n {
+                    lhs[[i, j]] $op $rhs[[i, j]];
+                }
+            }
+
+            lhs
+        }
+    );
+}
+
+
+macro_rules! madd_allocating {
+    ($op:tt, $lhs:expr, $rhs:expr, $out:expr, $m:expr, $n:expr, $p:expr, $q:expr) => {
+        {
+            let mut out = $out;
+
+            let m = $m;
+            let n = $n;
+            let p = $p;
+            let q = $q;
+
+            debug_assert_eq!(m, p);
+            debug_assert_eq!(n, q);
+
+            let m = ::std::cmp::min(m, p);
+            let n = ::std::cmp::min(n, q);
+
+            for i in 0..m {
+                for j in 0..n {
+                    out[[i, j]] = $lhs[[i, j]] $op $rhs[[i, j]];
                 }
             }
 
@@ -144,12 +200,8 @@ impl<T: Copy, M: Nat, N: Nat> MatrixAdd for StaticMat<T, M, N>
 {
     type Output = Self;
 
-    fn add(mut self, rhs: Self) -> Self {
-        for i in 0..N::as_usize() * M::as_usize() {
-            self.elems[i] += rhs.elems[i];
-        }
-
-        self
+    fn add(self, rhs: Self) -> Self {
+        madd_inplace!(+=, self, rhs, M::as_usize(), N::as_usize())
     }
 }
 
@@ -161,12 +213,8 @@ impl<T: Copy, M: Nat, N: Nat> MatrixSub for StaticMat<T, M, N>
 {
     type Output = Self;
 
-    fn sub(mut self, rhs: Self) -> Self {
-        for i in 0..N::as_usize() * M::as_usize() {
-            self.elems[i] -= rhs.elems[i];
-        }
-
-        self
+    fn sub(self, rhs: Self) -> Self {
+        madd_inplace!(-=, self, rhs, M::as_usize(), N::as_usize())
     }
 }
 
@@ -182,13 +230,13 @@ impl<T: Copy, M: Nat, N: Nat, P: Nat> MatrixMul<StaticMat<T, N, P>> for StaticMa
     type Output = StaticMat<T, M, P>;
 
     fn mul(self, rhs: StaticMat<T, N, P>) -> StaticMat<T, M, P> {
-        mm_loop_naive!(self,
-                       rhs,
-                       StaticMat::from(T::zero()),
-                       M::as_usize(),
-                       N::as_usize(),
-                       N::as_usize(),
-                       P::as_usize())
+        mmul_loop_naive!(self,
+                         rhs,
+                         StaticMat::from(T::zero()),
+                         M::as_usize(),
+                         N::as_usize(),
+                         N::as_usize(),
+                         P::as_usize())
     }
 }
 
@@ -312,7 +360,7 @@ impl<T: Copy, M: Dim, N: Dim> Matrix for DynamicMat<T, M, N> {
 
 impl<T: Copy, M: Dim + Nat, N: Dim, P: Dim, Q: Dim + Nat> MatrixMul<DynamicMat<T, P, Q>>
     for DynamicMat<T, M, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           M: NatMul<Q>,
           <M as NatMul<Q>>::Result: Link<T>,
           T: Mul<Output = T> + AddAssign + Zero
@@ -320,7 +368,7 @@ impl<T: Copy, M: Dim + Nat, N: Dim, P: Dim, Q: Dim + Nat> MatrixMul<DynamicMat<T
     type Output = StaticMat<T, M, Q>;
 
     fn mul(self, rhs: DynamicMat<T, P, Q>) -> Self::Output {
-        mm_loop_naive!(self,
+        mmul_loop_naive!(self,
                        rhs,
                        StaticMat::from(T::zero()),
                        M::as_usize(),
@@ -332,7 +380,7 @@ impl<T: Copy, M: Dim + Nat, N: Dim, P: Dim, Q: Dim + Nat> MatrixMul<DynamicMat<T
 
 
 impl<T: Copy, N: Dim, P: Dim, Q: Dim + Nat> MatrixMul<DynamicMat<T, P, Q>> for DynamicMat<T, Dyn, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           T: Mul<Output = T> + AddAssign + Zero
 {
     type Output = DynamicMat<T, Dyn, Q>;
@@ -340,19 +388,19 @@ impl<T: Copy, N: Dim, P: Dim, Q: Dim + Nat> MatrixMul<DynamicMat<T, P, Q>> for D
     fn mul(self, rhs: DynamicMat<T, P, Q>) -> Self::Output {
         let m = self.rows.reify();
 
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from_elem(m, T::zero()),
-                       m,
-                       self.cols.reify(),
-                       rhs.rows.reify(),
-                       Q::as_usize())
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from_elem(m, T::zero()),
+                         m,
+                         self.cols.reify(),
+                         rhs.rows.reify(),
+                         Q::as_usize())
     }
 }
 
 
 impl<T: Copy, M: Dim + Nat, N: Dim, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for DynamicMat<T, M, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           T: Mul<Output = T> + AddAssign + Zero
 {
     type Output = DynamicMat<T, M, Dyn>;
@@ -360,19 +408,19 @@ impl<T: Copy, M: Dim + Nat, N: Dim, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for
     fn mul(self, rhs: DynamicMat<T, P, Dyn>) -> Self::Output {
         let q = rhs.cols.reify();
 
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from_elem(q, T::zero()),
-                       M::as_usize(),
-                       self.cols.reify(),
-                       rhs.rows.reify(),
-                       q)
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from_elem(q, T::zero()),
+                         M::as_usize(),
+                         self.cols.reify(),
+                         rhs.rows.reify(),
+                         q)
     }
 }
 
 
 impl<T: Copy, N: Dim, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for DynamicMat<T, Dyn, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           T: Mul<Output = T> + AddAssign + Zero
 {
     type Output = DynamicMat<T, Dyn, Dyn>;
@@ -381,19 +429,19 @@ impl<T: Copy, N: Dim, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for DynamicMat<T,
         let m = self.rows.reify();
         let q = rhs.cols.reify();
 
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from_elem(m, q, T::zero()),
-                       m,
-                       self.cols.reify(),
-                       rhs.rows.reify(),
-                       q)
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from_elem(m, q, T::zero()),
+                         m,
+                         self.cols.reify(),
+                         rhs.rows.reify(),
+                         q)
     }
 }
 
 
 impl<T: Copy, M: Nat, N: Nat, P: Dim, Q: Nat> MatrixMul<DynamicMat<T, P, Q>> for StaticMat<T, M, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           M: NatMul<N> + NatMul<Q>,
           <M as NatMul<N>>::Result: Link<T>,
           <M as NatMul<Q>>::Result: Link<T>,
@@ -402,19 +450,19 @@ impl<T: Copy, M: Nat, N: Nat, P: Dim, Q: Nat> MatrixMul<DynamicMat<T, P, Q>> for
     type Output = StaticMat<T, M, Q>;
 
     fn mul(self, rhs: DynamicMat<T, P, Q>) -> Self::Output {
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from(T::zero()),
-                       M::as_usize(),
-                       N::as_usize(),
-                       rhs.rows.reify(),
-                       Q::as_usize())
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from(T::zero()),
+                         M::as_usize(),
+                         N::as_usize(),
+                         rhs.rows.reify(),
+                         Q::as_usize())
     }
 }
 
 
 impl<T: Copy, M: Nat, N: Nat, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for StaticMat<T, M, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           M: NatMul<N>,
           <M as NatMul<N>>::Result: Link<T>,
           T: Mul<Output = T> + AddAssign + Zero
@@ -424,19 +472,19 @@ impl<T: Copy, M: Nat, N: Nat, P: Dim> MatrixMul<DynamicMat<T, P, Dyn>> for Stati
     fn mul(self, rhs: DynamicMat<T, P, Dyn>) -> Self::Output {
         let q = rhs.cols.reify();
 
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from_elem(q, T::zero()),
-                       M::as_usize(),
-                       N::as_usize(),
-                       rhs.rows.reify(),
-                       q)
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from_elem(q, T::zero()),
+                         M::as_usize(),
+                         N::as_usize(),
+                         rhs.rows.reify(),
+                         q)
     }
 }
 
 
 impl<T: Copy, M: Nat, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for DynamicMat<T, M, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           M: NatMul<Q>,
           P: NatMul<Q>,
           <M as NatMul<Q>>::Result: Link<T>,
@@ -446,19 +494,19 @@ impl<T: Copy, M: Nat, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for 
     type Output = StaticMat<T, M, Q>;
 
     fn mul(self, rhs: StaticMat<T, P, Q>) -> Self::Output {
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from(T::zero()),
-                       M::as_usize(),
-                       self.cols.reify(),
-                       P::as_usize(),
-                       Q::as_usize())
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from(T::zero()),
+                         M::as_usize(),
+                         self.cols.reify(),
+                         P::as_usize(),
+                         Q::as_usize())
     }
 }
 
 
 impl<T: Copy, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for DynamicMat<T, Dyn, N>
-    where N: MatrixMulCompat<P>,
+    where N: DimCompat<P>,
           P: NatMul<Q>,
           <P as NatMul<Q>>::Result: Link<T>,
           T: Mul<Output = T> + AddAssign + Zero
@@ -468,12 +516,26 @@ impl<T: Copy, N: Dim, P: Nat, Q: Nat> MatrixMul<StaticMat<T, P, Q>> for DynamicM
     fn mul(self, rhs: StaticMat<T, P, Q>) -> Self::Output {
         let m = self.rows.reify();
 
-        mm_loop_naive!(self,
-                       rhs,
-                       Self::Output::from_elem(m, T::zero()),
-                       m,
-                       self.cols.reify(),
-                       P::as_usize(),
-                       Q::as_usize())
+        mmul_loop_naive!(self,
+                         rhs,
+                         Self::Output::from_elem(m, T::zero()),
+                         m,
+                         self.cols.reify(),
+                         P::as_usize(),
+                         Q::as_usize())
+    }
+}
+
+
+impl<T: Copy, M: Nat, N: Nat, P: Dim, Q: Dim> MatrixAdd<DynamicMat<T, P, Q>> for StaticMat<T, M, N>
+    where M: DimCompat<P> + NatMul<N>,
+          N: DimCompat<Q>,
+          <M as NatMul<N>>::Result: Link<T>,
+          T: AddAssign
+{
+    type Output = StaticMat<T, M, N>;
+
+    fn add(self, rhs: DynamicMat<T, P, Q>) -> Self::Output {
+        madd_inplace!(+=, self, rhs, M::as_usize(), N::as_usize(), rhs.rows.reify(), rhs.cols.reify())
     }
 }

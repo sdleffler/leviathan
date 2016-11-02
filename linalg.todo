@@ -1,8 +1,15 @@
 Matrix multiplication:
 
 Matrix addition/subtraction:
-    ☐ StaticMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible
+    ☐ StaticMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible @timestamp(2016-11-02 14:51)
     ☐ DynamicMat<M?, N?> +/- StaticMat<P, Q> => StaticMat<P, Q> where M and P are compatible and N and Q are compatible
+    ☐ DynamicMat<M, N> +/- DynamicMat<M, N> => StaticMat<M, N>
+    ☐ DynamicMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible
+    ☐ DynamicMat<M, N?> +/- DynamicMat<P?, Q> => StaticMat<M, Q> where M and P are compatible and N and Q are compatible
+    ☐ DynamicMat<M?, N> +/- DynamicMat<P, Q?> => StaticMat<N, P> where M and P are compatible and N and Q are compatible
+    ☐ DynamicMat<M?, N> +/- DynamicMat<P?, N> => DynamicMat<M?, N> where M and P are compatible
+    ☐ DynamicMat<M, N?> +/- DynamicMat<M, Q?> => DynamicMat<M, N?> where N and Q are compatible
+    ☐ DynamicMat<M?, N?> +/- DynamicMat<P?, Q?> => DynamicMat<M?, N?> where M and P are compatible and N and Q are compatible
 
 Matrix transposition:
     ☐ DynamicMat<M?, N?> => DynamicMat<N?, M?>
@@ -14,6 +21,15 @@ Vector-matrix multiplication:
     ☐ StaticVec<M> * StaticMat<M, N> => StaticMat<M, N>
     ☐ DynamicMat<M, N> * StaticVec<N> => StaticMat<M, N>
     ☐ DynamicMat<Dyn, M> * StaticVec<M> => DynamicMat<Dyn, M>
+
+Vector addition/subtraction:
+    ✔ StaticVec<N> +/- StaticVec<N> => StaticVec<N> @done(2016-11-02 11:36) @project(Vector addition/subtraction)
+    ☐ DynamicVec<M?> +/- StaticVec<N> => StaticVec<N> where M and N are compatible
+    ☐ StaticVec<M> +/- DynamicVec<N?> => StaticVec<M> where M and N are compatible
+    ☐ DynamicVec<N> +/- DynamicVec<N> => StaticVec<N>
+    ☐ DynamicVec<M> +/- DynamicVec<N?> => StaticVec<M> where M and N are compatible
+    ☐ DynamicVec<M?> +/- DynamicVec<N> => StaticVec<N> where M and N are compatible
+    ☐ DynamicVec<M?> +/- DynamicVec<N?> => DynamicVec<M> where M and N are compatible
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:

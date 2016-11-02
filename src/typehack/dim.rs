@@ -18,3 +18,10 @@ impl Dim for Dyn {
         self.0
     }
 }
+
+
+pub trait DimCompat<R: Dim>: Dim {}
+
+impl<S: Dim> DimCompat<S> for S {}
+impl<S: Nat> DimCompat<Dyn> for S {}
+impl<S: Nat> DimCompat<S> for Dyn {}
