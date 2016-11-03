@@ -1,4 +1,47 @@
+use std::marker::PhantomData;
+use std::ops::Add;
+
 use super::{Nat, S, Z};
+
+
+impl Add<Z> for Z {
+    type Output = Z;
+
+    fn add(self, _rhs: Z) -> Z {
+        self
+    }
+}
+
+
+impl<N: Nat> Add<Z> for S<N> {
+    type Output = S<N>;
+
+    fn add(self, _rhs: Z) -> S<N> {
+        self
+    }
+}
+
+
+impl<N: Nat> Add<S<N>> for Z {
+    type Output = S<N>;
+
+    fn add(self, rhs: S<N>) -> S<N> {
+        rhs
+    }
+}
+
+
+impl<M: Nat, N: Nat> Add<S<N>> for S<M>
+    where M: Add<N>,
+          <M as Add<N>>::Output: Nat
+{
+    type Output = S<S<<M as Add<N>>::Output>>;
+
+    fn add(self, _rhs: S<N>) -> S<S<<M as Add<N>>::Output>> {
+        S(PhantomData)
+    }
+}
+
 
 pub trait NatAdd<N: Nat>: Nat {
     type Result: Nat;

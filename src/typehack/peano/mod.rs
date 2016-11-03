@@ -5,16 +5,16 @@ mod arith;
 pub use self::arith::*;
 
 
-pub trait Nat {
+pub trait Nat: Copy {
     fn as_data() -> Self;
     fn as_usize() -> usize;
 }
 
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Z;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct S<N: Nat>(PhantomData<N>);
 
 

@@ -1,10 +1,11 @@
 use typehack::peano::*;
 
 
-pub trait Dim {
+pub trait Dim: Copy {
     fn reify(&self) -> usize;
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Dyn(pub usize);
 
 impl<N: Nat> Dim for N {

@@ -1,5 +1,5 @@
-use lev::vector::*;
-use lev::vector::traits::*;
+use lev::linalg::*;
+use lev::linalg::traits::*;
 
 
 #[test]

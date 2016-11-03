@@ -11,11 +11,11 @@ fn peano_as_usize() {
 
 #[test]
 fn peano_add() {
-    assert_eq!(<Z as Add<Z>>::Result::as_usize(), 0);
-    assert_eq!(<Z as Add<S<Z>>>::Result::as_usize(), 1);
-    assert_eq!(<S<Z> as Add<Z>>::Result::as_usize(), 1);
-    assert_eq!(<S<Z> as Add<S<Z>>>::Result::as_usize(), 2);
-    assert_eq!(<S<S<S<Z>>> as Add<S<S<Z>>>>::Result::as_usize(), 5);
+    assert_eq!(<Z as NatAdd<Z>>::Result::as_usize(), 0);
+    assert_eq!(<Z as NatAdd<S<Z>>>::Result::as_usize(), 1);
+    assert_eq!(<S<Z> as NatAdd<Z>>::Result::as_usize(), 1);
+    assert_eq!(<S<Z> as NatAdd<S<Z>>>::Result::as_usize(), 2);
+    assert_eq!(<S<S<S<Z>>> as NatAdd<S<S<Z>>>>::Result::as_usize(), 5);
 }
 
 

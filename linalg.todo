@@ -1,46 +1,67 @@
 Matrix multiplication:
+    ☐ [always => S] StaticMat<M, N, L1> * StaticMat<N, P, L2> => StaticMat<M, P, L3>
+    ☐ [compat => S] DynamicMat<M, N?, L1> * StaticMat<P, Q, L2> => StaticMat<M, Q, L3>
+    ☐ [compat => S] StaticMat<M, N, L1> * DynamicMat<P?, Q, L2> => StaticMat<M, Q, L3>
+    ☐ [compat => S] DynamicMat<M, N?, L1> * DynamicMat<P?, Q, L2> => StaticMat<M, Q, L3>
+    ☐ [compat => D] DynamicMat<Dyn, N?, L1> * DynamicMat<P?, Q, L2> => DynamicMat<Dyn, Q, L3>
+    ☐ [compat => D] DynamicMat<M, N?, L1> * DynamicMat<P?, Dyn, L2> => DynamicMat<M, Dyn, L3>
+    ☐ [compat => D] DynamicMat<Dyn, N?, L1> * DynamicMat<P?, Dyn, L2> => DynamicMat<Dyn, Dyn, L3>
 
 Matrix addition/subtraction:
-    ☐ StaticMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible @timestamp(2016-11-02 14:51)
-    ☐ DynamicMat<M?, N?> +/- StaticMat<P, Q> => StaticMat<P, Q> where M and P are compatible and N and Q are compatible
-    ☐ DynamicMat<M, N> +/- DynamicMat<M, N> => StaticMat<M, N>
-    ☐ DynamicMat<M, N> +/- DynamicMat<P?, Q?> => StaticMat<M, N> where M and P are compatible and N and Q are compatible
-    ☐ DynamicMat<M, N?> +/- DynamicMat<P?, Q> => StaticMat<M, Q> where M and P are compatible and N and Q are compatible
-    ☐ DynamicMat<M?, N> +/- DynamicMat<P, Q?> => StaticMat<N, P> where M and P are compatible and N and Q are compatible
-    ☐ DynamicMat<M?, N> +/- DynamicMat<P?, N> => DynamicMat<M?, N> where M and P are compatible
-    ☐ DynamicMat<M, N?> +/- DynamicMat<M, Q?> => DynamicMat<M, N?> where N and Q are compatible
-    ☐ DynamicMat<M?, N?> +/- DynamicMat<P?, Q?> => DynamicMat<M?, N?> where M and P are compatible and N and Q are compatible
+    ☐ [always => S] StaticMat<M, N, L1> +/- StaticMat<M, N, L2> => StaticMat<M, N, L3>
+    ☐ [always => S] DynamicMat<M, N, L1> +/- StaticMat<M, N, L2> => StaticMat<M, N, L3>
+    ☐ [always => S] StaticMat<M, N, L1> +/- DynamicMat<M, N, L2> => StaticMat<M, N, L3>
+    ☐ [always => S] DynamicMat<M, N, L1> +/- DynamicMat<M, N, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] DynamicMat<M?, N, L1> +/- StaticMat<P, N, L2> => StaticMat<P, N, L3>
+    ☐ [compat => S] DynamicMat<M?, N, L1> +/- DynamicMat<P, N, L2> => StaticMat<P, N, L3>
+    ☐ [compat => S] DynamicMat<M, N?, L1> +/- StaticMat<M, P, L2> => StaticMat<M, P, L3>
+    ☐ [compat => S] DynamicMat<M, N?, L1> +/- DynamicMat<M, P, L2> => StaticMat<M, P, L3>
+    ☐ [compat => S] DynamicMat<M?, N?, L1> +/- StaticMat<P, Q, L2> => StaticMat<P, Q, L3>
+    ☐ [compat => S] DynamicMat<M?, N?, L1> +/- DynamicMat<P, Q, L2> => StaticMat<P, Q, L3>
+    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<P?, N, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<P?, N, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<M, Q?, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<M, Q?, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<P?, Q?, L2> => StaticMat<M, N, L3>
+    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<P?, Q?, L2> => StaticMat<M, N, L3>
+    ☐ [compat => D] DynamicMat<Dyn, N?, L1> +/- DynamicMat<Dyn, Q, L2> => DynamicMat<Dyn, Q, L3>
+    ☐ [compat => D] DynamicMat<Dyn, N, L1> +/- DynamicMat<Dyn, Q?, L2> => DynamicMat<Dyn, N, L3>
+    ☐ [compat => D] DynamicMat<M, Dyn, L1> +/- DynamicMat<P?, Dyn, L2> => DynamicMat<M, Dyn, L3>
+    ☐ [compat => D] DynamicMat<M?, Dyn, L1> +/- DynamicMat<P, Dyn, L2> => DynamicMat<P, Dyn, L3>
+    ☐ [compat => D] DynamicMat<Dyn, Dyn, L1> +/- DynamicMat<Dyn, Dyn, L2> => DynamicMat<Dyn, Dyn, L3>
 
 Matrix transposition:
-    ☐ DynamicMat<M?, N?> => DynamicMat<N?, M?>
+    ☐ StaticMat<M, N, L> => StaticMat<N, M, L>
+    ☐ StaticMat<M, N, L> => StaticMat<N, M, L::Alternate>
+    ☐ DynamicMat<M?, N?, L> => DynamicMat<N?, M?, L>
+    ☐ DynamicMat<M?, N?, L> => DynamicMat<N?, M?, L::Alternate>
+
+Matrix identity constructor:
+    ☐ StaticMat<N, N, L>
+    ☐ DynamicMat<N, N, L>
 
 Vector-matrix multiplication:
-    ☐ StaticMat<M, N> * StaticVec<N> => StaticVec<M>
-    ☐ DynamicMat<M, N?> * StaticVec<P> => StaticVec<M> where N and P are compatible
-    ☐ DynamicMat<Dyn, N?> * StaticVec<P> => DynamicVec<Dyn> where N and P are compatible
-    ☐ StaticVec<M> * StaticMat<M, N> => StaticMat<M, N>
-    ☐ DynamicMat<M, N> * StaticVec<N> => StaticMat<M, N>
-    ☐ DynamicMat<Dyn, M> * StaticVec<M> => DynamicMat<Dyn, M>
+    ☐ [always => S] StaticMat<M, N> * StaticVec<N> => StaticVec<M>
+    ☐ [always => S] StaticVec<M> * StaticMat<M, N> => StaticVec<N>
+    ☐ [compat => S] StaticMat<M, N> * DynamicVec<P?> => StaticVec<M>
+    ☐ [compat => S] DynamicVec<M?> * StaticMat<N, P> => StaticVec<P>
+    ☐ [compat => S] DynamicMat<M, N?> * StaticVec<P> => StaticVec<M>
+    ☐ [compat => S] StaticVec<M> * DynamicMat<N?, P> => StaticVec<P>
+    ☐ [compat => S] DynamicMat<M, N?> * DynamicVec<P?> => StaticVec<M>
+    ☐ [compat => S] DynamicVec<M?> * DynamicMat<N?, P> => StaticVec<P>
+    ☐ [compat => D] DynamicMat<Dyn, N?> * StaticVec<P> => DynamicVec<Dyn>
+    ☐ [compat => D] StaticVec<M> * DynamicMat<N?, Dyn> => DynamicVec<Dyn>
+    ☐ [compat => D] DynamicMat<Dyn, N?> * DynamicVec<P?> => DynamicVec<Dyn>
+    ☐ [compat => D] DynamicVec<M?> * DynamicMat<N?, Dyn> => DynamicVec<Dyn>
 
 Vector addition/subtraction:
-    ✔ StaticVec<N> +/- StaticVec<N> => StaticVec<N> @done(2016-11-02 11:36) @project(Vector addition/subtraction)
-    ☐ DynamicVec<M?> +/- StaticVec<N> => StaticVec<N> where M and N are compatible
-    ☐ StaticVec<M> +/- DynamicVec<N?> => StaticVec<M> where M and N are compatible
-    ☐ DynamicVec<N> +/- DynamicVec<N> => StaticVec<N>
-    ☐ DynamicVec<M> +/- DynamicVec<N?> => StaticVec<M> where M and N are compatible
-    ☐ DynamicVec<M?> +/- DynamicVec<N> => StaticVec<N> where M and N are compatible
-    ☐ DynamicVec<M?> +/- DynamicVec<N?> => DynamicVec<M> where M and N are compatible
+    ☐ [always => S] StaticVec<N> +/- StaticVec<N> => StaticVec<N>
+    ☐ [compat => S] DynamicVec<M?> +/- StaticVec<N> => StaticVec<N>
+    ☐ [compat => S] StaticVec<M> +/- DynamicVec<N?> => StaticVec<M>
+    ☐ [compat => S] DynamicVec<N> +/- DynamicVec<N> => StaticVec<N>
+    ☐ [compat => S] DynamicVec<M> +/- DynamicVec<N?> => StaticVec<M>
+    ☐ [compat => S] DynamicVec<M?> +/- DynamicVec<N> => StaticVec<N>
+    ☐ [compat => D] DynamicVec<Dyn> +/- DynamicVec<Dyn> => DynamicVec<Dyn>
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
-    ✔ StaticMat<M, N> * DynamicMat<P?, Q> => StaticMat<M, Q> where N and P are compatible @timestamp(2016-11-02 11:05) @done(2016-11-02 11:14) @project(Matrix multiplication)
-    ✔ StaticMat<M, N> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @timestamp(2016-11-02 11:14) @done(2016-11-02 11:19) @project(Matrix multiplication)
-    ✔ DynamicMat<M, N?> * StaticMat<P, Q> => StaticMat<M, Q> where N and P are compatible @done(2016-11-02 11:30) @project(Matrix multiplication)
-    ✔ DynamicMat<Dyn, N?> * StaticMat<P, Q> => DynamicMat<Dyn, Q> where N and P are compatible @timestamp(2016-11-02 11:31) @done(2016-11-02 11:33) @project(Matrix multiplication)
-    ✔ StaticMat<M, N> +/- StaticMat<M, N> => StaticMat<M, N> @done(2016-11-02 11:06)
-    ✔ StaticMat<M, N> => StaticMat<N, M> @done(2016-11-02 11:07) @project(Matrix transposition)
-    ✔ StaticMat<M, N> * StaticMat<N, P> => StaticMat<M, P> @done(2016-11-02 11:05) @project(Matrix multiplication)
-    ✔ DynamicMat<M, N?> * DynamicMat<P?, Q> => StaticMat<M, P> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
-    ✔ DynamicMat<Dyn, N?> * DynamicMat<P?, Q> => DynamicMat<Dyn, P> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
-    ✔ DynamicMat<M, N?> * DynamicMat<P?, Dyn> => DynamicMat<M, Dyn> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)
-    ✔ DynamicMat<Dyn, N?> * DynamicMat<P?, Dyn> => DynamicMat<Dyn, Dyn> where N and P are compatible @done(2016-11-02 11:05) @project(Matrix multiplication)

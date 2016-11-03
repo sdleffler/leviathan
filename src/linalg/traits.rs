@@ -50,6 +50,25 @@ pub trait VectorDot<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
 }
 
 
+pub trait Layout {
+    type Alternate: Layout;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RowMajor;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ColMajor;
+
+impl Layout for RowMajor {
+    type Alternate = ColMajor;
+}
+
+impl Layout for ColMajor {
+    type Alternate = RowMajor;
+}
+
+
 pub trait Matrix {
     type Rows: Dim;
     type Cols: Dim;
@@ -61,10 +80,8 @@ pub trait Matrix {
 pub trait Square: Matrix<Rows = <Self as Matrix>::Cols> {}
 
 
-pub trait MatrixTranspose: Matrix {
-    type Output: Matrix<Rows = Self::Cols, Cols = Self::Rows>;
-
-    fn transpose(self) -> Self::Output;
+pub trait MatrixTranspose<T: Matrix>: Matrix<Rows = T::Cols, Cols = T::Rows> {
+    fn transpose(self) -> T;
 }
 
 

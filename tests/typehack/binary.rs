@@ -11,11 +11,11 @@ fn binary_as_usize() {
 
 #[test]
 fn binary_add() {
-    assert_eq!(<O as Add<O>>::Result::as_usize(), 0);
-    assert_eq!(<O as Add<I>>::Result::as_usize(), 1);
-    assert_eq!(<I as Add<O>>::Result::as_usize(), 1);
-    assert_eq!(<I as Add<I>>::Result::as_usize(), 2);
-    assert_eq!(<I<I> as Add<O<I>>>::Result::as_usize(), 5);
+    assert_eq!(<O as NatAdd<O>>::Result::as_usize(), 0);
+    assert_eq!(<O as NatAdd<I>>::Result::as_usize(), 1);
+    assert_eq!(<I as NatAdd<O>>::Result::as_usize(), 1);
+    assert_eq!(<I as NatAdd<I>>::Result::as_usize(), 2);
+    assert_eq!(<I<I> as NatAdd<O<I>>>::Result::as_usize(), 5);
 }
 
 
