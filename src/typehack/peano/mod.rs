@@ -1,11 +1,15 @@
 use std::marker::PhantomData;
 
+use typehack::binary::Nat as BNat;
+use typehack::binary::O;
 
 mod arith;
 pub use self::arith::*;
 
 
 pub trait Nat: Copy {
+    type AsBinary: BNat;
+
     fn as_data() -> Self;
     fn as_usize() -> usize;
 }
@@ -19,6 +23,8 @@ pub struct S<N: Nat>(PhantomData<N>);
 
 
 impl Nat for Z {
+    type AsBinary = O;
+
     fn as_data() -> Z {
         Z
     }
@@ -30,6 +36,8 @@ impl Nat for Z {
 
 
 impl<N: Nat> Nat for S<N> {
+    type AsBinary = <N::AsBinary as BNat>::Succ;
+
     fn as_data() -> S<N> {
         S(PhantomData::<N>)
     }
@@ -79,3 +87,36 @@ pub type P28 = S<P27>;
 pub type P29 = S<P28>;
 pub type P30 = S<P29>;
 pub type P31 = S<P30>;
+pub type P32 = S<P31>;
+pub type P33 = S<P32>;
+pub type P34 = S<P33>;
+pub type P35 = S<P34>;
+pub type P36 = S<P35>;
+pub type P37 = S<P36>;
+pub type P38 = S<P37>;
+pub type P39 = S<P38>;
+pub type P40 = S<P39>;
+pub type P41 = S<P40>;
+pub type P42 = S<P41>;
+pub type P43 = S<P42>;
+pub type P44 = S<P43>;
+pub type P45 = S<P44>;
+pub type P46 = S<P45>;
+pub type P47 = S<P46>;
+pub type P48 = S<P47>;
+pub type P49 = S<P48>;
+pub type P50 = S<P49>;
+pub type P51 = S<P50>;
+pub type P52 = S<P51>;
+pub type P53 = S<P52>;
+pub type P54 = S<P53>;
+pub type P55 = S<P54>;
+pub type P56 = S<P55>;
+pub type P57 = S<P56>;
+pub type P58 = S<P57>;
+pub type P59 = S<P58>;
+pub type P60 = S<P59>;
+pub type P61 = S<P60>;
+pub type P62 = S<P61>;
+pub type P63 = S<P62>;
+pub type P64 = S<P63>;

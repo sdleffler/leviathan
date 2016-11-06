@@ -2,5 +2,5 @@
 extern crate leviathan as lev;
 
 mod array;
-mod linalg;
+// mod linalg;
 mod typehack;

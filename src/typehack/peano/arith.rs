@@ -95,13 +95,8 @@ impl<N: Nat, M: Nat> NatMul<M> for S<N>
 }
 
 
-// impl<N: Nat> NatMul<Z> for N {
-//     type Result = Z;
-// }
-//
-//
-// impl<N: Nat, M: Nat> NatMul<S<M>> for N
-//     where N: NatMul<M> + NatAdd<<N as NatMul<M>>::Result>
-// {
-//     type Result = <N as NatAdd<<N as NatMul<M>>::Result>>::Result;
-// }
+pub trait LessThan<N: Nat>: Nat {}
+
+
+impl<N: Nat> LessThan<S<N>> for Z {}
+impl<N: Nat, M: Nat> LessThan<S<N>> for S<M> where M: LessThan<N> {}

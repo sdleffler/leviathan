@@ -74,6 +74,10 @@ pub trait Matrix {
     type Cols: Dim;
 
     type Scalar: Copy;
+
+
+    fn get(&self, row: usize, col: usize) -> &Self::Scalar;
+    fn get_mut(&mut self, row: usize, col: usize) -> &mut Self::Scalar;
 }
 
 
@@ -92,13 +96,9 @@ pub trait MatrixNeg: Matrix {
 }
 
 
-pub trait MatrixAdd<RHS: Matrix = Self>: Matrix
-    where Self::Rows: DimCompat<RHS::Rows>,
-          Self::Cols: DimCompat<RHS::Cols>,
-          <Self::Output as Matrix>::Rows: DimCompat<Self::Rows> + DimCompat<RHS::Rows>,
-          <Self::Output as Matrix>::Cols: DimCompat<Self::Cols> + DimCompat<RHS::Cols>
-{
-    type Output: Matrix;
+pub trait MatrixAdd<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
+    : Matrix {
+    type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
 
     fn add(self, RHS) -> Self::Output;
 }
@@ -112,15 +112,13 @@ pub trait MatrixSub<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
 }
 
 
-pub trait MatrixMul<RHS: Matrix>: Matrix
-    where <Self as Matrix>::Cols: DimCompat<RHS::Rows>
-{
-    type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
-
-    fn mul(self, RHS) -> Self::Output;
+pub trait MatrixMul<RHS: Matrix<Rows = <Self as Matrix>::Cols>,
+                    Output: Matrix<Rows = <Self as Matrix>::Rows, Cols = <RHS as Matrix>::Cols>>
+    : Matrix {
+    fn mul(self, RHS) -> Output;
 }
 
 
 pub trait MatrixIdentity: Square {
-    fn eye() -> Self;
+    fn eye(Self::Rows) -> Self;
 }

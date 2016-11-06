@@ -1,67 +1,41 @@
 Matrix multiplication:
-    ☐ [always => S] StaticMat<M, N, L1> * StaticMat<N, P, L2> => StaticMat<M, P, L3>
-    ☐ [compat => S] DynamicMat<M, N?, L1> * StaticMat<P, Q, L2> => StaticMat<M, Q, L3>
-    ☐ [compat => S] StaticMat<M, N, L1> * DynamicMat<P?, Q, L2> => StaticMat<M, Q, L3>
-    ☐ [compat => S] DynamicMat<M, N?, L1> * DynamicMat<P?, Q, L2> => StaticMat<M, Q, L3>
-    ☐ [compat => D] DynamicMat<Dyn, N?, L1> * DynamicMat<P?, Q, L2> => DynamicMat<Dyn, Q, L3>
-    ☐ [compat => D] DynamicMat<M, N?, L1> * DynamicMat<P?, Dyn, L2> => DynamicMat<M, Dyn, L3>
-    ☐ [compat => D] DynamicMat<Dyn, N?, L1> * DynamicMat<P?, Dyn, L2> => DynamicMat<Dyn, Dyn, L3>
+    ☐ [compat => S] DenseMat<M, N?, L1> * DenseMat<P?, Q, L2> => DenseMat<M, Q, L3>
+    ☐ [compat => D] DenseMat<Dyn, N?, L1> * DenseMat<P?, Q, L2> => DenseMat<Dyn, Q, L3>
+    ☐ [compat => D] DenseMat<M, N?, L1> * DenseMat<P?, Dyn, L2> => DenseMat<M, Dyn, L3>
+    ☐ [compat => D] DenseMat<Dyn, N?, L1> * DenseMat<P?, Dyn, L2> => DenseMat<Dyn, Dyn, L3>
 
 Matrix addition/subtraction:
-    ☐ [always => S] StaticMat<M, N, L1> +/- StaticMat<M, N, L2> => StaticMat<M, N, L3>
-    ☐ [always => S] DynamicMat<M, N, L1> +/- StaticMat<M, N, L2> => StaticMat<M, N, L3>
-    ☐ [always => S] StaticMat<M, N, L1> +/- DynamicMat<M, N, L2> => StaticMat<M, N, L3>
-    ☐ [always => S] DynamicMat<M, N, L1> +/- DynamicMat<M, N, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] DynamicMat<M?, N, L1> +/- StaticMat<P, N, L2> => StaticMat<P, N, L3>
-    ☐ [compat => S] DynamicMat<M?, N, L1> +/- DynamicMat<P, N, L2> => StaticMat<P, N, L3>
-    ☐ [compat => S] DynamicMat<M, N?, L1> +/- StaticMat<M, P, L2> => StaticMat<M, P, L3>
-    ☐ [compat => S] DynamicMat<M, N?, L1> +/- DynamicMat<M, P, L2> => StaticMat<M, P, L3>
-    ☐ [compat => S] DynamicMat<M?, N?, L1> +/- StaticMat<P, Q, L2> => StaticMat<P, Q, L3>
-    ☐ [compat => S] DynamicMat<M?, N?, L1> +/- DynamicMat<P, Q, L2> => StaticMat<P, Q, L3>
-    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<P?, N, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<P?, N, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<M, Q?, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<M, Q?, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] StaticMat<M, N, L1> +/- DynamicMat<P?, Q?, L2> => StaticMat<M, N, L3>
-    ☐ [compat => S] DynamicMat<M, N, L1> +/- DynamicMat<P?, Q?, L2> => StaticMat<M, N, L3>
-    ☐ [compat => D] DynamicMat<Dyn, N?, L1> +/- DynamicMat<Dyn, Q, L2> => DynamicMat<Dyn, Q, L3>
-    ☐ [compat => D] DynamicMat<Dyn, N, L1> +/- DynamicMat<Dyn, Q?, L2> => DynamicMat<Dyn, N, L3>
-    ☐ [compat => D] DynamicMat<M, Dyn, L1> +/- DynamicMat<P?, Dyn, L2> => DynamicMat<M, Dyn, L3>
-    ☐ [compat => D] DynamicMat<M?, Dyn, L1> +/- DynamicMat<P, Dyn, L2> => DynamicMat<P, Dyn, L3>
-    ☐ [compat => D] DynamicMat<Dyn, Dyn, L1> +/- DynamicMat<Dyn, Dyn, L2> => DynamicMat<Dyn, Dyn, L3>
+    ☐ [always => S] DenseMat<M, N, L1> +/- DenseMat<M, N, L2> => DenseMat<M, N, L3>
+    ☐ [compat => S] DenseMat<M?, N, L1> +/- DenseMat<P, N, L2> => DenseMat<P, N, L3>
+    ☐ [compat => S] DenseMat<M, N?, L1> +/- DenseMat<M, P, L2> => DenseMat<M, P, L3>
+    ☐ [compat => S] DenseMat<M?, N?, L1> +/- DenseMat<P, Q, L2> => DenseMat<P, Q, L3>
+    ☐ [compat => S] DenseMat<M, N, L1> +/- DenseMat<P?, N, L2> => DenseMat<M, N, L3>
+    ☐ [compat => S] DenseMat<M, N, L1> +/- DenseMat<M, Q?, L2> => DenseMat<M, N, L3>
+    ☐ [compat => S] DenseMat<M, N, L1> +/- DenseMat<P?, Q?, L2> => DenseMat<M, N, L3>
+    ☐ [compat => D] DenseMat<Dyn, N?, L1> +/- DenseMat<Dyn, Q, L2> => DenseMat<Dyn, Q, L3>
+    ☐ [compat => D] DenseMat<Dyn, N, L1> +/- DenseMat<Dyn, Q?, L2> => DenseMat<Dyn, N, L3>
+    ☐ [compat => D] DenseMat<M, Dyn, L1> +/- DenseMat<P?, Dyn, L2> => DenseMat<M, Dyn, L3>
+    ☐ [compat => D] DenseMat<M?, Dyn, L1> +/- DenseMat<P, Dyn, L2> => DenseMat<P, Dyn, L3>
+    ☐ [compat => D] DenseMat<Dyn, Dyn, L1> +/- DenseMat<Dyn, Dyn, L2> => DenseMat<Dyn, Dyn, L3>
 
 Matrix transposition:
-    ☐ StaticMat<M, N, L> => StaticMat<N, M, L>
-    ☐ StaticMat<M, N, L> => StaticMat<N, M, L::Alternate>
-    ☐ DynamicMat<M?, N?, L> => DynamicMat<N?, M?, L>
-    ☐ DynamicMat<M?, N?, L> => DynamicMat<N?, M?, L::Alternate>
+    ☐ DenseMat<M?, N?, L> => DenseMat<N?, M?, L>
+    ☐ DenseMat<M?, N?, L> => DenseMat<N?, M?, L::Alternate>
 
 Matrix identity constructor:
-    ☐ StaticMat<N, N, L>
-    ☐ DynamicMat<N, N, L>
+    ☐ DenseMat<N, N, L>
 
 Vector-matrix multiplication:
-    ☐ [always => S] StaticMat<M, N> * StaticVec<N> => StaticVec<M>
-    ☐ [always => S] StaticVec<M> * StaticMat<M, N> => StaticVec<N>
-    ☐ [compat => S] StaticMat<M, N> * DynamicVec<P?> => StaticVec<M>
-    ☐ [compat => S] DynamicVec<M?> * StaticMat<N, P> => StaticVec<P>
-    ☐ [compat => S] DynamicMat<M, N?> * StaticVec<P> => StaticVec<M>
-    ☐ [compat => S] StaticVec<M> * DynamicMat<N?, P> => StaticVec<P>
-    ☐ [compat => S] DynamicMat<M, N?> * DynamicVec<P?> => StaticVec<M>
-    ☐ [compat => S] DynamicVec<M?> * DynamicMat<N?, P> => StaticVec<P>
-    ☐ [compat => D] DynamicMat<Dyn, N?> * StaticVec<P> => DynamicVec<Dyn>
-    ☐ [compat => D] StaticVec<M> * DynamicMat<N?, Dyn> => DynamicVec<Dyn>
-    ☐ [compat => D] DynamicMat<Dyn, N?> * DynamicVec<P?> => DynamicVec<Dyn>
-    ☐ [compat => D] DynamicVec<M?> * DynamicMat<N?, Dyn> => DynamicVec<Dyn>
+    ☐ [compat => S] DenseMat<M, N?> * Vector<P?> => Vector<M>
+    ☐ [compat => S] Vector<M?> * DenseMat<N?, P> => Vector<P>
+    ☐ [compat => D] DenseMat<Dyn, N?> * Vector<P?> => Vector<Dyn>
+    ☐ [compat => D] Vector<M?> * DenseMat<N?, Dyn> => Vector<Dyn>
 
 Vector addition/subtraction:
-    ☐ [always => S] StaticVec<N> +/- StaticVec<N> => StaticVec<N>
-    ☐ [compat => S] DynamicVec<M?> +/- StaticVec<N> => StaticVec<N>
-    ☐ [compat => S] StaticVec<M> +/- DynamicVec<N?> => StaticVec<M>
-    ☐ [compat => S] DynamicVec<N> +/- DynamicVec<N> => StaticVec<N>
-    ☐ [compat => S] DynamicVec<M> +/- DynamicVec<N?> => StaticVec<M>
-    ☐ [compat => S] DynamicVec<M?> +/- DynamicVec<N> => StaticVec<N>
-    ☐ [compat => D] DynamicVec<Dyn> +/- DynamicVec<Dyn> => DynamicVec<Dyn>
+    ☐ [compat => S] Vector<N> +/- Vector<N> => Vector<N>
+    ☐ [compat => S] Vector<M> +/- Vector<N?> => Vector<M>
+    ☐ [compat => S] Vector<M?> +/- Vector<N> => Vector<N>
+    ☐ [compat => D] Vector<Dyn> +/- Vector<Dyn> => Vector<Dyn>
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:

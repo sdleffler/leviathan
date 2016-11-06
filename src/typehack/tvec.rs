@@ -5,11 +5,13 @@ use std::slice;
 use typehack::peano::*;
 
 
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct TCons<E, N> {
     pub elem: E,
     pub next: N,
 }
+#[derive(Copy, Clone)]
 pub struct TNil;
 
 
