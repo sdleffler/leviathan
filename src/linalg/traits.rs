@@ -55,17 +55,17 @@ pub trait Layout {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowMajor;
+pub struct Row;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ColMajor;
+pub struct Column;
 
-impl Layout for RowMajor {
-    type Alternate = ColMajor;
+impl Layout for Row {
+    type Alternate = Column;
 }
 
-impl Layout for ColMajor {
-    type Alternate = RowMajor;
+impl Layout for Column {
+    type Alternate = Row;
 }
 
 

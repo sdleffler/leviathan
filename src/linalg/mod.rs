@@ -208,7 +208,7 @@ impl<T: Copy, M: Dim, N: Dim, L: Layout> DenseMat<T, M, N, L>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> Matrix for DenseMat<T, M, N, ColMajor>
+impl<T: Copy, M: Dim, N: Dim> Matrix for DenseMat<T, M, N, Column>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>
 {
@@ -232,7 +232,7 @@ impl<T: Copy, M: Dim, N: Dim> Matrix for DenseMat<T, M, N, ColMajor>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> Matrix for DenseMat<T, M, N, RowMajor>
+impl<T: Copy, M: Dim, N: Dim> Matrix for DenseMat<T, M, N, Row>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>
 {
@@ -264,13 +264,12 @@ impl<T: Copy, N: Nat, L: Layout> Square for DenseMat<T, N, N, L>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, RowMajor>>
-    for DenseMat<T, M, N, ColMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, Row>> for DenseMat<T, M, N, Column>
     where M: DimMul<N>,
           N: DimMul<M, Result = <M as DimMul<N>>::Result>,
           <M as DimMul<N>>::Result: Store<T>
 {
-    fn transpose(self) -> DenseMat<T, N, M, RowMajor> {
+    fn transpose(self) -> DenseMat<T, N, M, Row> {
         DenseMat {
             rows: self.cols,
             cols: self.rows,
@@ -281,13 +280,12 @@ impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, RowMajor>>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, ColMajor>>
-    for DenseMat<T, M, N, RowMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, Column>> for DenseMat<T, M, N, Row>
     where M: DimMul<N>,
           N: DimMul<M, Result = <M as DimMul<N>>::Result>,
           <M as DimMul<N>>::Result: Store<T>
 {
-    fn transpose(self) -> DenseMat<T, N, M, ColMajor> {
+    fn transpose(self) -> DenseMat<T, N, M, Column> {
         DenseMat {
             rows: self.cols,
             cols: self.rows,
@@ -320,31 +318,30 @@ macro_rules! mtra_impl {
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, RowMajor>>
-    for DenseMat<T, M, N, RowMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, Row>> for DenseMat<T, M, N, Row>
     where M: DimMul<N>,
           N: DimMul<M, Result = <M as DimMul<N>>::Result>,
           <M as DimMul<N>>::Result: Store<T>
 {
-    fn transpose(self) -> DenseMat<T, N, M, RowMajor> {
+    fn transpose(self) -> DenseMat<T, N, M, Row> {
         mtra_impl!(self)
     }
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, ColMajor>>
-    for DenseMat<T, M, N, ColMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixTranspose<DenseMat<T, N, M, Column>>
+    for DenseMat<T, M, N, Column>
     where M: DimMul<N>,
           N: DimMul<M, Result = <M as DimMul<N>>::Result>,
           <M as DimMul<N>>::Result: Store<T>
 {
-    fn transpose(self) -> DenseMat<T, N, M, ColMajor> {
+    fn transpose(self) -> DenseMat<T, N, M, Column> {
         mtra_impl!(self)
     }
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, RowMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, Row>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>,
           T: AddAssign
@@ -357,7 +354,7 @@ impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, RowMajor>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, ColMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, Column>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>,
           T: AddAssign
@@ -370,7 +367,7 @@ impl<T: Copy, M: Dim, N: Dim> MatrixAdd for DenseMat<T, M, N, ColMajor>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixSub for DenseMat<T, M, N, RowMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixSub for DenseMat<T, M, N, Row>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>,
           T: SubAssign
@@ -383,7 +380,7 @@ impl<T: Copy, M: Dim, N: Dim> MatrixSub for DenseMat<T, M, N, RowMajor>
 }
 
 
-impl<T: Copy, M: Dim, N: Dim> MatrixSub for DenseMat<T, M, N, ColMajor>
+impl<T: Copy, M: Dim, N: Dim> MatrixSub for DenseMat<T, M, N, Column>
     where M: DimMul<N>,
           <M as DimMul<N>>::Result: Store<T>,
           T: SubAssign
@@ -464,39 +461,46 @@ impl<T: Copy, M: Dim, N: Dim, L: Layout> IndexMut<[usize; 2]> for DenseMat<T, M,
 
 #[derive(PartialEq, Eq, Debug)]
 #[repr(C)]
-pub struct DenseVec<T, N: Nat>
+pub struct DenseVec<T, N: Nat, L: Layout = Column>
     where N: Store<T>
 {
     elems: Data<T, N>,
+    phantom: PhantomData<L>,
 }
 
 
-impl<T: Clone, N: Nat + Store<T>> Clone for DenseVec<T, N>
+impl<T: Clone, N: Nat + Store<T>, L: Layout> Clone for DenseVec<T, N, L>
     where Data<T, N>: Copy
 {
     fn clone(&self) -> Self {
-        DenseVec { elems: self.elems.clone() }
+        DenseVec {
+            elems: self.elems.clone(),
+            phantom: PhantomData,
+        }
     }
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> Copy for DenseVec<T, N>
+impl<T: Copy, N: Nat + Store<T>, L: Layout> Copy for DenseVec<T, N, L>
     where DenseVec<T, N>: Clone,
           Data<T, N>: Copy
 {
 }
 
 
-impl<'a, T: Copy, N: Nat> From<&'a [T]> for DenseVec<T, N>
+impl<'a, T: Copy, N: Nat, L: Layout> From<&'a [T]> for DenseVec<T, N, L>
     where N: Store<T>
 {
     fn from(slice: &[T]) -> Self {
-        DenseVec { elems: Data::from_slice(N::as_data(), slice) }
+        DenseVec {
+            elems: Data::from_slice(N::as_data(), slice),
+            phantom: PhantomData,
+        }
     }
 }
 
 
-impl<T> Deref for DenseVec<T, B1> {
+impl<T, L: Layout> Deref for DenseVec<T, B1, L> {
     type Target = T;
 
     fn deref<'a>(&'a self) -> &'a T {
@@ -505,7 +509,7 @@ impl<T> Deref for DenseVec<T, B1> {
 }
 
 
-impl<T> DerefMut for DenseVec<T, B1> {
+impl<T, L: Layout> DerefMut for DenseVec<T, B1, L> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.elems[0]
     }
@@ -520,18 +524,18 @@ pub struct Vec2View<T> {
 }
 
 
-impl<T> Deref for DenseVec<T, B2> {
+impl<T, L: Layout> Deref for DenseVec<T, B2, L> {
     type Target = Vec2View<T>;
 
     fn deref<'a>(&'a self) -> &'a Vec2View<T> {
-        unsafe { mem::transmute::<&'a DenseVec<T, B2>, &'a Vec2View<T>>(self) }
+        unsafe { mem::transmute::<&'a DenseVec<T, B2, L>, &'a Vec2View<T>>(self) }
     }
 }
 
 
-impl<T> DerefMut for DenseVec<T, B2> {
+impl<T, L: Layout> DerefMut for DenseVec<T, B2, L> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut Vec2View<T> {
-        unsafe { mem::transmute::<&'a mut DenseVec<T, B2>, &'a mut Vec2View<T>>(self) }
+        unsafe { mem::transmute::<&'a mut DenseVec<T, B2, L>, &'a mut Vec2View<T>>(self) }
     }
 }
 
@@ -545,18 +549,18 @@ pub struct Vec3View<T> {
 }
 
 
-impl<T> Deref for DenseVec<T, B3> {
+impl<T, L: Layout> Deref for DenseVec<T, B3, L> {
     type Target = Vec3View<T>;
 
     fn deref<'a>(&'a self) -> &'a Vec3View<T> {
-        unsafe { mem::transmute::<&'a DenseVec<T, B3>, &'a Vec3View<T>>(self) }
+        unsafe { mem::transmute::<&'a DenseVec<T, B3, L>, &'a Vec3View<T>>(self) }
     }
 }
 
 
-impl<T> DerefMut for DenseVec<T, B3> {
+impl<T, L: Layout> DerefMut for DenseVec<T, B3, L> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut Vec3View<T> {
-        unsafe { mem::transmute::<&'a mut DenseVec<T, B3>, &'a mut Vec3View<T>>(self) }
+        unsafe { mem::transmute::<&'a mut DenseVec<T, B3, L>, &'a mut Vec3View<T>>(self) }
     }
 }
 
@@ -571,30 +575,30 @@ pub struct Vec4View<T> {
 }
 
 
-impl<T> Deref for DenseVec<T, B4> {
+impl<T, L: Layout> Deref for DenseVec<T, B4, L> {
     type Target = Vec4View<T>;
 
     fn deref<'a>(&'a self) -> &'a Vec4View<T> {
-        unsafe { mem::transmute::<&'a DenseVec<T, B4>, &'a Vec4View<T>>(self) }
+        unsafe { mem::transmute::<&'a DenseVec<T, B4, L>, &'a Vec4View<T>>(self) }
     }
 }
 
 
-impl<T> DerefMut for DenseVec<T, B4> {
+impl<T, L: Layout> DerefMut for DenseVec<T, B4, L> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut Vec4View<T> {
-        unsafe { mem::transmute::<&'a mut DenseVec<T, B4>, &'a mut Vec4View<T>>(self) }
+        unsafe { mem::transmute::<&'a mut DenseVec<T, B4, L>, &'a mut Vec4View<T>>(self) }
     }
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> Vector for DenseVec<T, N> {
+impl<T: Copy, N: Nat + Store<T>, L: Layout> Vector for DenseVec<T, N, L> {
     type Dims = N;
 
     type Scalar = T;
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> VectorAdd for DenseVec<T, N>
+impl<T: Copy, N: Nat + Store<T>, L: Layout> VectorAdd for DenseVec<T, N, L>
     where T: AddAssign
 {
     type Output = Self;
@@ -609,7 +613,7 @@ impl<T: Copy, N: Nat + Store<T>> VectorAdd for DenseVec<T, N>
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> VectorSub for DenseVec<T, N>
+impl<T: Copy, N: Nat + Store<T>, L: Layout> VectorSub for DenseVec<T, N, L>
     where T: SubAssign
 {
     type Output = Self;
@@ -624,7 +628,7 @@ impl<T: Copy, N: Nat + Store<T>> VectorSub for DenseVec<T, N>
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> VectorHadamard for DenseVec<T, N>
+impl<T: Copy, N: Nat + Store<T>, L: Layout> VectorHadamard for DenseVec<T, N, L>
     where T: MulAssign
 {
     type Output = Self;
@@ -639,7 +643,7 @@ impl<T: Copy, N: Nat + Store<T>> VectorHadamard for DenseVec<T, N>
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> VectorDot for DenseVec<T, N>
+impl<T: Copy, N: Nat + Store<T>, L: Layout> VectorDot for DenseVec<T, N, L>
     where T: Mul,
           <T as Mul>::Output: Zero + AddAssign
 {
@@ -660,13 +664,13 @@ impl<T: Copy, N: Nat + Store<T>> VectorDot for DenseVec<T, N>
 }
 
 
-impl<'a, 'b, T: Copy, N: Nat + Store<T>> VectorDot<&'b DenseVec<T, N>> for &'a DenseVec<T, N>
+impl<'a, 'b, T: Copy, N: Nat + Store<T>, L: Layout> VectorDot<&'b DenseVec<T, N, L>> for &'a DenseVec<T, N, L>
     where T: Mul,
           <T as Mul>::Output: Zero + AddAssign
 {
     type Output = <T as Mul>::Output;
 
-    fn dot(self, rhs: &'b DenseVec<T, N>) -> Self::Output {
+    fn dot(self, rhs: &'b DenseVec<T, N, L>) -> Self::Output {
         let mut accum = <T as Mul>::Output::zero();
 
         let lhs = &self.elems[..N::as_usize()];
@@ -681,7 +685,7 @@ impl<'a, 'b, T: Copy, N: Nat + Store<T>> VectorDot<&'b DenseVec<T, N>> for &'a D
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> Index<usize> for DenseVec<T, N> {
+impl<T: Copy, N: Nat + Store<T>, L: Layout> Index<usize> for DenseVec<T, N, L> {
     type Output = T;
 
     fn index(&self, idx: usize) -> &T {
@@ -690,11 +694,21 @@ impl<T: Copy, N: Nat + Store<T>> Index<usize> for DenseVec<T, N> {
 }
 
 
-impl<T: Copy, N: Nat + Store<T>> IndexMut<usize> for DenseVec<T, N> {
+impl<T: Copy, N: Nat + Store<T>, L: Layout> IndexMut<usize> for DenseVec<T, N, L> {
     fn index_mut(&mut self, idx: usize) -> &mut T {
         &mut self.elems[idx]
     }
 }
+
+
+// ************************************************************************************************
+// Matrix-vector multiplication
+// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+// ************************************************************************************************
+// Convenience type synonyms for dense matrices/vectors
+// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
 pub type Mat<T, M, N, L> = DenseMat<T, M, N, L>;
@@ -702,72 +716,72 @@ pub type Vect<T, N> = DenseVec<T, N>;
 
 
 // THEY SAID I WAS CRAZY
-pub type Mat1x1<T, L = ColMajor> = Mat<T, B1, B1, L>;
-pub type Mat1x2<T, L = ColMajor> = Mat<T, B1, B3, L>;
-pub type Mat1x3<T, L = ColMajor> = Mat<T, B1, B3, L>;
-pub type Mat1x4<T, L = ColMajor> = Mat<T, B1, B4, L>;
-pub type Mat1x5<T, L = ColMajor> = Mat<T, B1, B5, L>;
-pub type Mat1x6<T, L = ColMajor> = Mat<T, B1, B6, L>;
+pub type Mat1x1<T, L = Column> = Mat<T, B1, B1, L>;
+pub type Mat1x2<T, L = Column> = Mat<T, B1, B3, L>;
+pub type Mat1x3<T, L = Column> = Mat<T, B1, B3, L>;
+pub type Mat1x4<T, L = Column> = Mat<T, B1, B4, L>;
+pub type Mat1x5<T, L = Column> = Mat<T, B1, B5, L>;
+pub type Mat1x6<T, L = Column> = Mat<T, B1, B6, L>;
 
-pub type Mat1xD<T, L = ColMajor> = Mat<T, B1, Dyn, L>;
-pub type MatDx1<T, L = ColMajor> = Mat<T, Dyn, B1, L>;
+pub type Mat1xD<T, L = Column> = Mat<T, B1, Dyn, L>;
+pub type MatDx1<T, L = Column> = Mat<T, Dyn, B1, L>;
 
 // THEY SAID I WAS MAD
-pub type Mat2x1<T, L = ColMajor> = Mat<T, B3, B1, L>;
-pub type Mat2x2<T, L = ColMajor> = Mat<T, B3, B3, L>;
-pub type Mat2x3<T, L = ColMajor> = Mat<T, B3, B3, L>;
-pub type Mat2x4<T, L = ColMajor> = Mat<T, B3, B4, L>;
-pub type Mat2x5<T, L = ColMajor> = Mat<T, B3, B5, L>;
-pub type Mat2x6<T, L = ColMajor> = Mat<T, B3, B6, L>;
+pub type Mat2x1<T, L = Column> = Mat<T, B3, B1, L>;
+pub type Mat2x2<T, L = Column> = Mat<T, B3, B3, L>;
+pub type Mat2x3<T, L = Column> = Mat<T, B3, B3, L>;
+pub type Mat2x4<T, L = Column> = Mat<T, B3, B4, L>;
+pub type Mat2x5<T, L = Column> = Mat<T, B3, B5, L>;
+pub type Mat2x6<T, L = Column> = Mat<T, B3, B6, L>;
 
-pub type Mat2xD<T, L = ColMajor> = Mat<T, B3, Dyn, L>;
-pub type MatDx2<T, L = ColMajor> = Mat<T, Dyn, B3, L>;
+pub type Mat2xD<T, L = Column> = Mat<T, B3, Dyn, L>;
+pub type MatDx2<T, L = Column> = Mat<T, Dyn, B3, L>;
 
 // BUT I'LL SHOW THEM
-pub type Mat3x1<T, L = ColMajor> = Mat<T, B3, B1, L>;
-pub type Mat3x2<T, L = ColMajor> = Mat<T, B3, B3, L>;
-pub type Mat3x3<T, L = ColMajor> = Mat<T, B3, B3, L>;
-pub type Mat3x4<T, L = ColMajor> = Mat<T, B3, B4, L>;
-pub type Mat3x5<T, L = ColMajor> = Mat<T, B3, B5, L>;
-pub type Mat3x6<T, L = ColMajor> = Mat<T, B3, B6, L>;
+pub type Mat3x1<T, L = Column> = Mat<T, B3, B1, L>;
+pub type Mat3x2<T, L = Column> = Mat<T, B3, B3, L>;
+pub type Mat3x3<T, L = Column> = Mat<T, B3, B3, L>;
+pub type Mat3x4<T, L = Column> = Mat<T, B3, B4, L>;
+pub type Mat3x5<T, L = Column> = Mat<T, B3, B5, L>;
+pub type Mat3x6<T, L = Column> = Mat<T, B3, B6, L>;
 
-pub type Mat3xD<T, L = ColMajor> = Mat<T, B3, Dyn, L>;
-pub type MatDx3<T, L = ColMajor> = Mat<T, Dyn, B3, L>;
+pub type Mat3xD<T, L = Column> = Mat<T, B3, Dyn, L>;
+pub type MatDx3<T, L = Column> = Mat<T, Dyn, B3, L>;
 
 // I'LL SHOW THEM ALL
-pub type Mat4x1<T, L = ColMajor> = Mat<T, B4, B1, L>;
-pub type Mat4x2<T, L = ColMajor> = Mat<T, B4, B3, L>;
-pub type Mat4x3<T, L = ColMajor> = Mat<T, B4, B3, L>;
-pub type Mat4x4<T, L = ColMajor> = Mat<T, B4, B4, L>;
-pub type Mat4x5<T, L = ColMajor> = Mat<T, B4, B5, L>;
-pub type Mat4x6<T, L = ColMajor> = Mat<T, B4, B6, L>;
+pub type Mat4x1<T, L = Column> = Mat<T, B4, B1, L>;
+pub type Mat4x2<T, L = Column> = Mat<T, B4, B3, L>;
+pub type Mat4x3<T, L = Column> = Mat<T, B4, B3, L>;
+pub type Mat4x4<T, L = Column> = Mat<T, B4, B4, L>;
+pub type Mat4x5<T, L = Column> = Mat<T, B4, B5, L>;
+pub type Mat4x6<T, L = Column> = Mat<T, B4, B6, L>;
 
-pub type Mat4xD<T, L = ColMajor> = Mat<T, B4, Dyn, L>;
-pub type MatDx4<T, L = ColMajor> = Mat<T, Dyn, B4, L>;
+pub type Mat4xD<T, L = Column> = Mat<T, B4, Dyn, L>;
+pub type MatDx4<T, L = Column> = Mat<T, Dyn, B4, L>;
 
 // THE DEPTH OF MY MADNESS
-pub type Mat5x1<T, L = ColMajor> = Mat<T, B5, B1, L>;
-pub type Mat5x2<T, L = ColMajor> = Mat<T, B5, B3, L>;
-pub type Mat5x3<T, L = ColMajor> = Mat<T, B5, B3, L>;
-pub type Mat5x4<T, L = ColMajor> = Mat<T, B5, B4, L>;
-pub type Mat5x5<T, L = ColMajor> = Mat<T, B5, B5, L>;
-pub type Mat5x6<T, L = ColMajor> = Mat<T, B5, B6, L>;
+pub type Mat5x1<T, L = Column> = Mat<T, B5, B1, L>;
+pub type Mat5x2<T, L = Column> = Mat<T, B5, B3, L>;
+pub type Mat5x3<T, L = Column> = Mat<T, B5, B3, L>;
+pub type Mat5x4<T, L = Column> = Mat<T, B5, B4, L>;
+pub type Mat5x5<T, L = Column> = Mat<T, B5, B5, L>;
+pub type Mat5x6<T, L = Column> = Mat<T, B5, B6, L>;
 
-pub type Mat5xD<T, L = ColMajor> = Mat<T, B5, Dyn, L>;
-pub type MatDx5<T, L = ColMajor> = Mat<T, Dyn, B5, L>;
+pub type Mat5xD<T, L = Column> = Mat<T, B5, Dyn, L>;
+pub type MatDx5<T, L = Column> = Mat<T, Dyn, B5, L>;
 
 // and the sum total of my wit
-pub type Mat6x1<T, L = ColMajor> = Mat<T, B6, B1, L>;
-pub type Mat6x2<T, L = ColMajor> = Mat<T, B6, B3, L>;
-pub type Mat6x3<T, L = ColMajor> = Mat<T, B6, B3, L>;
-pub type Mat6x4<T, L = ColMajor> = Mat<T, B6, B4, L>;
-pub type Mat6x5<T, L = ColMajor> = Mat<T, B6, B5, L>;
-pub type Mat6x6<T, L = ColMajor> = Mat<T, B6, B6, L>;
+pub type Mat6x1<T, L = Column> = Mat<T, B6, B1, L>;
+pub type Mat6x2<T, L = Column> = Mat<T, B6, B3, L>;
+pub type Mat6x3<T, L = Column> = Mat<T, B6, B3, L>;
+pub type Mat6x4<T, L = Column> = Mat<T, B6, B4, L>;
+pub type Mat6x5<T, L = Column> = Mat<T, B6, B5, L>;
+pub type Mat6x6<T, L = Column> = Mat<T, B6, B6, L>;
 
-pub type Mat6xD<T, L = ColMajor> = Mat<T, B6, Dyn, L>;
-pub type MatDx6<T, L = ColMajor> = Mat<T, Dyn, B6, L>;
+pub type Mat6xD<T, L = Column> = Mat<T, B6, Dyn, L>;
+pub type MatDx6<T, L = Column> = Mat<T, Dyn, B6, L>;
 
-pub type MatDxD<T, L = ColMajor> = Mat<T, Dyn, Dyn, L>;
+pub type MatDxD<T, L = Column> = Mat<T, Dyn, Dyn, L>;
 
 
 pub type Vec1<T> = Vect<T, B1>;
