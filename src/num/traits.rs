@@ -1,3 +1,22 @@
+pub trait Float {
+    fn sqrt(self) -> Self;
+}
+
+
+macro_rules! impl_float {
+    ($($t:ident),*) => {
+        $(impl Float for $t {
+            #[inline]
+            fn sqrt(self) -> $t {
+                self.sqrt()
+            }
+        })*
+    }
+}
+
+impl_float!(f32, f64);
+
+
 pub trait Zero {
     fn zero() -> Self;
 }

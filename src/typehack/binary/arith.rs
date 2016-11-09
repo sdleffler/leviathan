@@ -110,7 +110,7 @@ impl<M: Nat, N: Nat> NatMul<N> for I<M>
 
 
 pub trait NatShl<N: Nat>: Nat {
-    type Result;
+    type Result: Nat;
 }
 
 
@@ -130,4 +130,21 @@ impl<M: Nat, N: Nat> NatShl<I<N>> for M
           <M as NatShl<N>>::Result: NatShl<N>
 {
     type Result = O<<<M as NatShl<N>>::Result as NatShl<N>>::Result>;
+}
+
+
+pub trait NatRem<N: Nat>: Nat {
+    type Result: Nat;
+}
+
+
+impl<N: Nat, M: Nat> NatRem<N> for M
+    where M: NatSub<N>
+{
+    type Result = <M as NatSub<N>>::Result;
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<N: Nat, M: Nat> NatRem<N> for M {
+    default type Result = M;
 }

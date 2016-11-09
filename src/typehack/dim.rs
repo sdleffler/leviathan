@@ -1,22 +1,39 @@
+use std::fmt::Debug;
+
 use typehack::binary::*;
 
 
-pub trait Dim: Copy {
+pub trait Dim: Eq + Debug + Copy {
+    type Succ;
+
     fn reify(&self) -> usize;
+    fn succ(self) -> Self::Succ;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Dyn(pub usize);
 
 impl<N: Nat> Dim for N {
+    type Succ = N::Succ;
+
     fn reify(&self) -> usize {
         N::as_usize()
+    }
+
+    fn succ(self) -> Self::Succ {
+        N::Succ::as_data()
     }
 }
 
 impl Dim for Dyn {
+    type Succ = Dyn;
+
     fn reify(&self) -> usize {
         self.0
+    }
+
+    fn succ(self) -> Self::Succ {
+        Dyn(self.0 + 1)
     }
 }
 

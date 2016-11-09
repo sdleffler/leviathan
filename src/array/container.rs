@@ -28,7 +28,7 @@ pub trait Dims<T>: Copy {
     type Length: PNat;
     type Index: Homogeneous<usize>;
 
-    type Product: Store<T>;
+    type Product: Size<T>;
 
     fn product(&self) -> Self::Product;
 
@@ -101,9 +101,9 @@ macro_rules! dims_impl {
 }
 
 
-impl<T, M: BNat + DimMul<N>, N: Dim + Store<T>, L: Dims<T, Product = N>> Dims<T> for TCons<M, L>
+impl<T, M: BNat + DimMul<N>, N: Dim + Size<T>, L: Dims<T, Product = N>> Dims<T> for TCons<M, L>
     where M: DimMul<N>,
-          <M as DimMul<N>>::Result: Store<T>
+          <M as DimMul<N>>::Result: Size<T>
 {
     type Product = <M as DimMul<N>>::Result;
 
@@ -117,7 +117,7 @@ impl<T, M: BNat + DimMul<N>, N: Dim + Store<T>, L: Dims<T, Product = N>> Dims<T>
 
 impl<T, L: Dims<T>> Dims<T> for TCons<Dyn, L>
     where Dyn: DimMul<L::Product>,
-          <Dyn as DimMul<L::Product>>::Result: Store<T>
+          <Dyn as DimMul<L::Product>>::Result: Size<T>
 {
     type Product = <Dyn as DimMul<L::Product>>::Result;
 
@@ -252,7 +252,7 @@ impl<T, X: Dim, Y: Dim, Z: Dim> IndexMut<[usize; 3]>
 
 
 pub struct Array<T, D: Dims<T>>
-    where D::Product: Store<T>
+    where D::Product: Size<T>
 {
     dims: D,
     data: Data<T, D::Product>,

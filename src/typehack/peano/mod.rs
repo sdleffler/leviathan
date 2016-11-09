@@ -7,7 +7,7 @@ mod arith;
 pub use self::arith::*;
 
 
-pub trait Nat: Copy {
+pub trait Nat: Eq + Copy {
     type AsBinary: BNat;
 
     fn as_data() -> Self;

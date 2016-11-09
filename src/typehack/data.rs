@@ -4,6 +4,8 @@ use std::ops::{Deref, DerefMut};
 use std::ptr;
 use std::slice;
 
+use unreachable::UncheckedOptionExt;
+
 use typehack::binary::*;
 use typehack::dim::*;
 
@@ -39,22 +41,34 @@ impl<E, N: Nat> Raw<E> for I<N>
 }
 
 
-pub trait Store<E>: Dim {
+pub trait Size<E>: Dim {
     type Reify;
 
     unsafe fn uninitialized(self) -> Self::Reify;
+    unsafe fn forget_internals(Self::Reify);
+
     unsafe fn into_slice<'a>(self, &'a Self::Reify) -> &'a [E];
     unsafe fn into_mut_slice<'a>(self, &'a mut Self::Reify) -> &'a mut [E];
 }
 
 
-impl<E> Store<E> for Dyn {
+impl<E> Size<E> for Dyn {
     type Reify = Vec<E>;
 
-    unsafe fn uninitialized(self) -> Self::Reify {
+    unsafe fn uninitialized(self) -> Vec<E> {
+        // We can create a Vec with uninitialized memory by asking for a given capacity, and
+        // then manually setting its length.
         let mut vec = Vec::with_capacity(self.reify());
         vec.set_len(self.reify());
         vec
+    }
+
+    unsafe fn forget_internals(mut vec: Vec<E>) {
+        // Similarly to creating an uninitialized Vec, we can cause the Vec to forget its
+        // internals by setting its length to zero. The memory it holds will still be freed
+        // correctly, but without running destructors on the elements inside, which is
+        // exactly what we want.
+        vec.set_len(0);
     }
 
     unsafe fn into_slice<'a>(self, r: &'a Self::Reify) -> &'a [E] {
@@ -67,13 +81,18 @@ impl<E> Store<E> for Dyn {
 }
 
 
-impl<E, N: Nat> Store<E> for N
+impl<E, N: Nat> Size<E> for N
     where N: Raw<E> + NatSub<B32>
 {
     type Reify = Box<N::Data>;
 
-    unsafe fn uninitialized(self) -> Self::Reify {
+    unsafe fn uninitialized(self) -> Box<N::Data> {
         Box::new(mem::uninitialized())
+    }
+
+    unsafe fn forget_internals(boxed: Box<N::Data>) {
+        let data: N::Data = *boxed;
+        mem::forget(data);
     }
 
     unsafe fn into_slice<'a>(self, r: &'a Box<N::Data>) -> &'a [E] {
@@ -89,13 +108,17 @@ impl<E, N: Nat> Store<E> for N
 
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-impl<E, N: Nat> Store<E> for N
+impl<E, N: Nat> Size<E> for N
     where N: Raw<E>
 {
     default type Reify = N::Data;
 
     default unsafe fn uninitialized(self) -> Self::Reify {
         mem::uninitialized()
+    }
+
+    default unsafe fn forget_internals(data: Self::Reify) {
+        mem::forget(data);
     }
 
     default unsafe fn into_slice<'a>(self, p: &'a Self::Reify) -> &'a [E] {
@@ -108,13 +131,14 @@ impl<E, N: Nat> Store<E> for N
 }
 
 
-pub struct Data<T, S: Store<T>> {
+#[derive(Copy)]
+pub struct Data<T, S: Size<T>> {
     pub size: S,
     data: S::Reify,
 }
 
 
-impl<T: Clone, S: Store<T>> Clone for Data<T, S>
+impl<T: Clone, S: Size<T>> Clone for Data<T, S>
     where S::Reify: Clone
 {
     fn clone(&self) -> Self {
@@ -126,7 +150,7 @@ impl<T: Clone, S: Store<T>> Clone for Data<T, S>
 }
 
 
-impl<T, S: Store<T>> Deref for Data<T, S> {
+impl<T, S: Size<T>> Deref for Data<T, S> {
     type Target = [T];
 
     fn deref<'a>(&'a self) -> &'a [T] {
@@ -135,14 +159,14 @@ impl<T, S: Store<T>> Deref for Data<T, S> {
 }
 
 
-impl<T, S: Store<T>> DerefMut for Data<T, S> {
+impl<T, S: Size<T>> DerefMut for Data<T, S> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] {
         unsafe { self.size.into_mut_slice(&mut self.data) }
     }
 }
 
 
-impl<T, S: Store<T>> Data<T, S> {
+impl<T, S: Size<T>> Data<T, S> {
     pub fn from_elem(s: S, elem: &T) -> Data<T, S>
         where T: Clone
     {
@@ -212,18 +236,81 @@ impl<T, S: Store<T>> Data<T, S> {
 }
 
 
-impl<T: PartialEq, N: Store<T>> PartialEq for Data<T, N> {
+impl<T: PartialEq, N: Size<T>> PartialEq for Data<T, N> {
     fn eq(&self, rhs: &Self) -> bool {
         self.deref() == rhs.deref()
     }
 }
 
-impl<T: Eq, N: Store<T>> Eq for Data<T, N> {}
+impl<T: Eq, N: Size<T>> Eq for Data<T, N> {}
 
 
-impl<T: fmt::Debug, N: Store<T>> fmt::Debug for Data<T, N> {
+impl<T: fmt::Debug, N: Size<T>> fmt::Debug for Data<T, N> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.deref().fmt(fmt)
+    }
+}
+
+
+impl<T, N: Size<T>> IntoIterator for Data<T, N> {
+    type Item = T;
+    type IntoIter = IntoIter<T, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            data: Some(self),
+            idx: 0,
+        }
+    }
+}
+
+
+pub struct IntoIter<T, N: Size<T>> {
+    data: Option<Data<T, N>>,
+    idx: usize,
+}
+
+
+impl<T, N: Size<T>> Iterator for IntoIter<T, N> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        unsafe {
+            let data = self.data.as_ref().unchecked_unwrap();
+            if self.idx < data.size.reify() {
+                let idx = self.idx;
+                self.idx += 1;
+                Some(ptr::read(&self.data.as_ref().unchecked_unwrap()[idx]))
+            } else {
+                None
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        unsafe {
+            let data = self.data.as_ref().unchecked_unwrap();
+            let remaining = data.size.reify() - self.idx;
+            (remaining, Some(remaining))
+        }
+    }
+}
+
+
+impl<T, N: Size<T>> ExactSizeIterator for IntoIter<T, N> {}
+
+
+impl<T, N: Size<T>> Drop for IntoIter<T, N> {
+    fn drop(&mut self) {
+        unsafe {
+            {
+                let data = self.data.as_ref().unchecked_unwrap();
+                for i in self.idx..data.size.reify() {
+                    mem::drop(ptr::read(&data[i]));
+                }
+            }
+            N::forget_internals(self.data.take().unchecked_unwrap().data)
+        }
     }
 }
 

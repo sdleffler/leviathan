@@ -5,11 +5,9 @@ authors = ["Sean Leffler <sean@errno.com>"]
 license = "MIT"
 
 
+[dependencies]
+unreachable = "0.1"
+
+
 [dev-dependencies]
 compiletest_rs = "0.2.4"
-
-
-[features]
-default = ["operators"]
-
-operators = []

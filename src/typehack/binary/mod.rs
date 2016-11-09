@@ -1,6 +1,8 @@
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
-mod arith;
+
+pub mod arith;
 pub use self::arith::*;
 
 
@@ -14,7 +16,7 @@ macro_rules! binary_type {
 }
 
 
-pub trait Nat: Copy {
+pub trait Nat: Eq + Debug + Copy {
     type Succ: Nat;
 
     fn as_usize() -> usize;

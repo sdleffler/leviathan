@@ -1,17 +1,43 @@
+use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Neg, Index,
+               IndexMut};
+
+use num::traits::{One, Zero};
 use typehack::dim::*;
+
+
+pub trait Scalar: Sized + Zero + One +
+                  Add<Output = Self> +
+                  Sub<Output = Self> +
+                  Mul<Output = Self> +
+                  Div<Output = Self> +
+                  AddAssign + SubAssign +
+                  MulAssign + DivAssign +
+                  Neg<Output = Self> +
+                  PartialOrd + PartialEq {
+    fn abs(&self) -> Self;
+}
+
+
+macro_rules! impl_scalar {
+    ($($t:ident),*) => {
+        $(
+            impl Scalar for $t {
+                fn abs(&self) -> Self {
+                    $t::abs(*self)
+                }
+            }
+        )*
+    }
+}
+
+
+impl_scalar!(i8, i16, i32, i64, f32, f64);
 
 
 pub trait Vector {
     type Dims: Dim;
 
-    type Scalar: Copy;
-}
-
-
-impl<'a, V: Vector> Vector for &'a V {
-    type Dims = V::Dims;
-
-    type Scalar = V::Scalar;
+    type Scalar: Scalar;
 }
 
 
@@ -22,31 +48,13 @@ pub trait VectorNeg: Vector {
 }
 
 
-pub trait VectorAdd<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
-    type Output: Vector<Dims = RHS::Dims>;
-
-    fn add(self, RHS) -> Self::Output;
+pub trait Dot<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
+    fn dot(self, RHS) -> Self::Scalar;
 }
 
 
-pub trait VectorSub<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
-    type Output: Vector<Dims = RHS::Dims>;
-
-    fn sub(self, RHS) -> Self::Output;
-}
-
-
-pub trait VectorHadamard<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
-    type Output: Vector<Dims = RHS::Dims>;
-
-    fn mul(self, RHS) -> Self::Output;
-}
-
-
-pub trait VectorDot<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
-    type Output;
-
-    fn dot(self, RHS) -> Self::Output;
+pub trait VectorNorm: Vector {
+    fn norm(&self) -> Self::Scalar;
 }
 
 
@@ -69,19 +77,38 @@ impl Layout for Column {
 }
 
 
-pub trait Matrix {
+pub trait Matrix
+    : Index<[usize; 2], Output = <Self as Matrix>::Scalar> + IndexMut<[usize; 2]>
+    {
     type Rows: Dim;
     type Cols: Dim;
 
-    type Scalar: Copy;
+    type Scalar: Scalar;
 
+    fn rows(&self) -> Self::Rows;
+    fn cols(&self) -> Self::Cols;
 
     fn get(&self, row: usize, col: usize) -> &Self::Scalar;
     fn get_mut(&mut self, row: usize, col: usize) -> &mut Self::Scalar;
+
+    fn swap(&mut self, a: [usize; 2], b: [usize; 2]);
+
+    fn row_switch_mut(&mut self, i: usize, j: usize);
+    fn row_mul_mut(&mut self, i: usize, c: &Self::Scalar) where Self::Scalar: Clone;
+    fn row_add_mut(&mut self, i: usize, j: usize, c: &Self::Scalar) where Self::Scalar: Clone;
+
+    fn col_switch_mut(&mut self, i: usize, j: usize);
+    fn col_mul_mut(&mut self, i: usize, c: &Self::Scalar) where Self::Scalar: Clone;
+    fn col_add_mut(&mut self, i: usize, j: usize, c: &Self::Scalar) where Self::Scalar: Clone;
 }
 
 
-pub trait Square: Matrix<Rows = <Self as Matrix>::Cols> {}
+#[cfg_attr(rustfmt, rustfmt_skip)]
+pub trait Square: Matrix<Rows = <Self as Square>::Side, Cols = <Self as Square>::Side> {
+    type Side: Dim;
+
+    fn side(&self) -> Self::Side;
+}
 
 
 pub trait MatrixTranspose<T: Matrix>: Matrix<Rows = T::Cols, Cols = T::Rows> {
@@ -92,7 +119,7 @@ pub trait MatrixTranspose<T: Matrix>: Matrix<Rows = T::Cols, Cols = T::Rows> {
 pub trait MatrixNeg: Matrix {
     type Output: Matrix<Rows = Self::Rows, Cols = Self::Cols>;
 
-    fn neg(Self) -> Self::Output;
+    fn neg(Self) -> <Self as MatrixNeg>::Output;
 }
 
 
@@ -100,7 +127,7 @@ pub trait MatrixAdd<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
     : Matrix {
     type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
 
-    fn add(self, RHS) -> Self::Output;
+    fn add(self, RHS) -> <Self as MatrixAdd<RHS>>::Output;
 }
 
 
@@ -108,7 +135,7 @@ pub trait MatrixSub<RHS: Matrix<Rows = Self::Rows, Cols = Self::Cols> = Self>
     : Matrix {
     type Output: Matrix<Rows = Self::Rows, Cols = RHS::Cols>;
 
-    fn sub(self, RHS) -> Self::Output;
+    fn sub(self, RHS) -> <Self as MatrixSub<RHS>>::Output;
 }
 
 
