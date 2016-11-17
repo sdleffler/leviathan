@@ -1,22 +1,28 @@
 use std::cmp;
+use std::iter::{FromIterator, Sum};
 use std::mem;
-use std::ops::{Add, Sub, Mul, Div, Neg, Deref, DerefMut, Index, IndexMut};
+use std::ops::{Add, Sub, Mul, MulAssign, Div, Neg, Deref, DerefMut, Index, IndexMut};
 use std::ptr;
 
+use void::Void;
+
+use iter_exact::{CollectExactExt, FromExactSizeIterator};
 use linalg::matrix::*;
 use linalg::traits::*;
 use num::traits::*;
 use typehack::binary::*;
 use typehack::data::*;
 use typehack::dim::*;
-use typehack::void::*;
 
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[repr(C)]
 pub struct DenseVec<T: Scalar, N: Size<T>> {
     elems: Data<T, N>,
 }
+
+
+impl<T: Copy + Scalar, N: Size<T>> Copy for DenseVec<T, N> where Data<T, N>: Copy {}
 
 
 impl<T: Scalar, N: Size<T>> DenseVec<T, N> {
@@ -46,12 +52,17 @@ impl<T: Scalar, N: Size<T>> DenseVec<T, N> {
     }
 
 
-    pub fn from_data(data: Data<T, N>) -> DenseVec<T, N> {
+    pub fn from_data(data: Data<T, N>) -> Self {
         DenseVec { elems: data }
     }
 
 
-    pub fn len(&self) -> N {
+    pub fn len(&self) -> usize {
+        self.elems.size.reify()
+    }
+
+
+    pub fn size(&self) -> N {
         self.elems.size
     }
 
@@ -64,31 +75,63 @@ impl<T: Scalar, N: Size<T>> DenseVec<T, N> {
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.elems.deref_mut()
     }
-}
 
 
-impl<T: Clone + Scalar, N: Size<T>> Clone for DenseVec<T, N>
-    where Data<T, N>: Clone
-{
-    fn clone(&self) -> Self {
-        DenseVec { elems: self.elems.clone() }
+    pub fn augment<M: Size<T>, P: Size<T>>(self, rhs: DenseVec<T, M>) -> DenseVec<T, P>
+        where N: DimAdd<M, Result = P>
+    {
+        let mut result;
+
+        unsafe {
+            result = DenseVec { elems: Data::uninitialized(self.size().add(rhs.size())) };
+            let slen = self.len();
+
+            for (i, elem) in self.elems.into_iter().enumerate() {
+                ptr::write(&mut result[i], elem);
+            }
+
+            for (j, elem) in rhs.elems.into_iter().enumerate() {
+                ptr::write(&mut result[slen + j], elem);
+            }
+        }
+
+        result
+    }
+
+
+    pub fn zero_extend<M: Size<T>>(self, size: M) -> DenseVec<T, M> {
+        let mut result;
+
+        unsafe {
+            result = DenseVec { elems: Data::uninitialized(size) };
+            let slen = self.len();
+
+            assert!(slen <= size.reify());
+
+            for (i, elem) in self.elems.into_iter().enumerate() {
+                ptr::write(&mut result[i], elem);
+            }
+
+            for i in slen..size.reify() {
+                ptr::write(&mut result[i], T::zero());
+            }
+        }
+
+        result
     }
 }
 
 
-impl<T: Copy + Scalar, N: Size<T>> Copy for DenseVec<T, N> where Data<T, N>: Copy {}
-
-
-impl<'a, T: Clone + Scalar, N: Nat + Size<T>> From<&'a [T]> for DenseVec<T, N> {
-    fn from(slice: &[T]) -> Self {
-        DenseVec { elems: Data::from_slice(N::as_data(), slice) }
+impl<T: Scalar, N: Size<T>> From<Data<T, N>> for DenseVec<T, N> {
+    fn from(data: Data<T, N>) -> Self {
+        DenseVec { elems: data }
     }
 }
 
 
-impl<'a, T: Clone + Scalar> From<&'a [T]> for DenseVec<T, Dyn> {
+impl<'a, T: Clone + Scalar, N: Size<T>> From<&'a [T]> for DenseVec<T, N> {
     fn from(slice: &[T]) -> Self {
-        DenseVec { elems: Data::from_slice(Dyn(slice.len()), slice) }
+        DenseVec { elems: Data::from_slice(N::from_usize(slice.len()), slice) }
     }
 }
 
@@ -188,6 +231,10 @@ impl<T: Scalar, N: Size<T>> Vector for DenseVec<T, N> {
     type Dims = N;
 
     type Scalar = T;
+
+    fn size(&self) -> N {
+        self.elems.size
+    }
 }
 
 
@@ -195,6 +242,10 @@ impl<'a, T: Scalar, N: Size<T>> Vector for &'a DenseVec<T, N> {
     type Dims = N;
 
     type Scalar = T;
+
+    fn size(&self) -> N {
+        self.elems.size
+    }
 }
 
 
@@ -365,14 +416,20 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Mul<&'b DenseVec<T, N>> for &'a Dens
 }
 
 
+impl<T: Clone + Scalar, N: Size<T>> MulAssign<T> for DenseVec<T, N> {
+    fn mul_assign(&mut self, rhs: T) {
+        for i in 0..self.elems.size.reify() {
+            self.elems[i] *= rhs.clone();
+        }
+    }
+}
+
+
 impl<T: Clone + Scalar, N: Size<T>> Mul<T> for DenseVec<T, N> {
     type Output = Self;
 
     fn mul(mut self, rhs: T) -> Self {
-        for i in 0..self.elems.size.reify() {
-            self.elems[i] *= rhs.clone();
-        }
-
+        self *= rhs;
         self
     }
 }
@@ -626,5 +683,42 @@ impl<T: Scalar, N: Size<T>> Index<usize> for DenseVec<T, N> {
 impl<T: Scalar, N: Size<T>> IndexMut<usize> for DenseVec<T, N> {
     fn index_mut(&mut self, idx: usize) -> &mut T {
         &mut self.elems[idx]
+    }
+}
+
+
+impl<T: Scalar, N: Size<T>> IntoIterator for DenseVec<T, N> {
+    type Item = T;
+    type IntoIter = IntoIter<T, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.elems.into_iter()
+    }
+}
+
+
+impl<T: Scalar> FromIterator<T> for DenseVec<T, Dyn> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        DenseVec { elems: iter.into_iter().collect() }
+    }
+}
+
+
+impl<T: Scalar, N: Size<T>> FromExactSizeIterator<T> for DenseVec<T, N> {
+    fn from_exact_size_iter<I: IntoIterator<Item = T>>(iter: I) -> Self
+        where I::IntoIter: ExactSizeIterator
+    {
+        DenseVec { elems: iter.into_iter().collect_exact() }
+    }
+}
+
+
+impl<T: Scalar, N: Size<T>> Sum for DenseVec<T, N> {
+    fn sum<I: Iterator<Item = DenseVec<T, N>>>(mut iter: I) -> DenseVec<T, N> {
+        if let Some(first) = iter.next() {
+            iter.fold(first, |a, b| a + b)
+        } else {
+            DenseVec::from_fn(N::from_usize(0), |_| T::zero())
+        }
     }
 }

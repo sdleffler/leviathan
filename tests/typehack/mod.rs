@@ -1,2 +1,2 @@
-mod binary;
+// mod binary;
 mod peano;

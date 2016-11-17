@@ -1,53 +1,45 @@
-use super::{Nat, I, O};
+use super::{Nat, P, I, O};
 
 
 pub trait NatAdd<N: Nat>: Nat {
     type Result: Nat;
 }
 
-impl NatAdd<()> for () {
-    type Result = ();
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<M: Nat, N: Nat> NatAdd<N> for M {
+    default type Result = N;
 }
 
-impl<N: Nat> NatAdd<O<N>> for () {
+impl<N: Nat> NatAdd<P> for O<N> {
     type Result = O<N>;
 }
 
-impl<N: Nat> NatAdd<I<N>> for () {
+impl<N: Nat> NatAdd<P> for I<N> {
     type Result = I<N>;
 }
 
-impl<N: Nat> NatAdd<()> for O<N> {
+impl<N: Nat> NatAdd<O<N>> for P {
     type Result = O<N>;
 }
 
-impl<N: Nat> NatAdd<()> for I<N> {
+impl<N: Nat> NatAdd<I<N>> for P {
     type Result = I<N>;
 }
 
-impl<M: Nat, N: Nat> NatAdd<O<N>> for O<M>
-    where M: NatAdd<N>
-{
+impl<M: Nat, N: Nat> NatAdd<O<N>> for O<M> {
     type Result = O<<M as NatAdd<N>>::Result>;
 }
 
-impl<M: Nat, N: Nat> NatAdd<I<N>> for O<M>
-    where M: NatAdd<N>
-{
+impl<M: Nat, N: Nat> NatAdd<I<N>> for O<M> {
     type Result = I<<M as NatAdd<N>>::Result>;
 }
 
-impl<M: Nat, N: Nat> NatAdd<O<N>> for I<M>
-    where M: NatAdd<N>
-{
+impl<M: Nat, N: Nat> NatAdd<O<N>> for I<M> {
     type Result = I<<M as NatAdd<N>>::Result>;
 }
 
-impl<M: Nat, N: Nat> NatAdd<I<N>> for I<M>
-    where M: NatAdd<N>,
-          <M as NatAdd<N>>::Result: NatAdd<I<O>>
-{
-    type Result = O<<<M as NatAdd<N>>::Result as NatAdd<I<O>>>::Result>;
+impl<M: Nat, N: Nat> NatAdd<I<N>> for I<M> {
+    type Result = O<<<M as NatAdd<N>>::Result as Nat>::Succ>;
 }
 
 
@@ -56,7 +48,7 @@ pub trait NatSub<N: Nat>: Nat {
 }
 
 
-impl<N: Nat> NatSub<()> for N {
+impl<N: Nat> NatSub<P> for N {
     type Result = N;
 }
 
@@ -79,10 +71,9 @@ impl<M: Nat, N: Nat> NatSub<I<N>> for I<M>
 }
 
 impl<M: Nat, N: Nat> NatSub<I<N>> for O<M>
-    where M: NatSub<I>,
-          <M as NatSub<I>>::Result: NatSub<N>
+    where <M as Nat>::Pred: NatSub<N>
 {
-    type Result = I<<<M as NatSub<I>>::Result as NatSub<N>>::Result>;
+    type Result = I<<<M as Nat>::Pred as NatSub<N>>::Result>;
 }
 
 
@@ -91,20 +82,20 @@ pub trait NatMul<N: Nat>: Nat {
 }
 
 
-impl<N: Nat> NatMul<N> for () {
-    type Result = ();
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<M: Nat, N: Nat> NatMul<N> for M {
+    default type Result = M;
 }
 
-impl<M: Nat, N: Nat> NatMul<N> for O<M>
-    where M: NatMul<O<N>>
-{
+impl<N: Nat> NatMul<N> for P {
+    type Result = P;
+}
+
+impl<M: Nat, N: Nat> NatMul<N> for O<M> {
     type Result = <M as NatMul<O<N>>>::Result;
 }
 
-impl<M: Nat, N: Nat> NatMul<N> for I<M>
-    where M: NatMul<O<N>>,
-          N: NatAdd<<M as NatMul<O<N>>>::Result>
-{
+impl<M: Nat, N: Nat> NatMul<N> for I<M> {
     type Result = <N as NatAdd<<M as NatMul<O<N>>>::Result>>::Result;
 }
 
@@ -114,22 +105,32 @@ pub trait NatShl<N: Nat>: Nat {
 }
 
 
-impl<N: Nat> NatShl<()> for N {
-    type Result = N;
+impl<M: Nat, N: Nat> NatShl<N> for M {
+    type Result = <N as NatShlFlipped<M>>::Result;
 }
 
-impl<M: Nat, N: Nat> NatShl<O<N>> for M
-    where M: NatShl<N>,
-          <M as NatShl<N>>::Result: NatShl<N>
-{
-    type Result = <<M as NatShl<N>>::Result as NatShl<N>>::Result;
+
+pub trait NatShlFlipped<N: Nat>: Nat {
+    type Result: Nat;
 }
 
-impl<M: Nat, N: Nat> NatShl<I<N>> for M
-    where M: NatShl<N>,
-          <M as NatShl<N>>::Result: NatShl<N>
-{
-    type Result = O<<<M as NatShl<N>>::Result as NatShl<N>>::Result>;
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<M: Nat, N: Nat> NatShlFlipped<N> for M {
+    default type Result = N;
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<N: Nat> NatShlFlipped<N> for P {
+    default type Result = N;
+}
+
+impl<M: Nat, N: Nat> NatShlFlipped<M> for O<N> {
+    type Result = <N as NatShlFlipped<<N as NatShlFlipped<M>>::Result>>::Result;
+}
+
+impl<M: Nat, N: Nat> NatShlFlipped<M> for I<N> {
+    type Result = O<<N as NatShlFlipped<<N as NatShlFlipped<M>>::Result>>::Result>;
 }
 
 

@@ -1,13 +1,17 @@
 [package]
-name = "leviathan"
-version = "0.1.0"
 authors = ["Sean Leffler <sean@errno.com>"]
 license = "MIT"
-
+name = "leviathan"
+version = "0.1.0"
 
 [dependencies]
+log = "0.3.6"
 unreachable = "0.1"
+void = "1.0.2"
 
+[dependencies.exact-size-iterator-traits]
+path = "../exact-size-iterator-traits"
 
 [dev-dependencies]
 compiletest_rs = "0.2.4"
+env_logger = "0.3.5"

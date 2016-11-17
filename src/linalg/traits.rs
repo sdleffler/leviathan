@@ -1,3 +1,4 @@
+use std::iter::{Product, Sum};
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Neg, Index,
                IndexMut};
 
@@ -5,7 +6,7 @@ use num::traits::{One, Zero};
 use typehack::dim::*;
 
 
-pub trait Scalar: Sized + Zero + One +
+pub trait Scalar: Clone + Sized + Zero + One +
                   Add<Output = Self> +
                   Sub<Output = Self> +
                   Mul<Output = Self> +
@@ -13,8 +14,52 @@ pub trait Scalar: Sized + Zero + One +
                   AddAssign + SubAssign +
                   MulAssign + DivAssign +
                   Neg<Output = Self> +
-                  PartialOrd + PartialEq {
+                  PartialOrd + PartialEq + ::std::fmt::Debug +
+                  Product + Sum {
     fn abs(&self) -> Self;
+
+
+    fn eq_zero(&self) -> bool {
+        self == &Self::zero()
+    }
+
+    fn eq_one(&self) -> bool {
+        self == &Self::one()
+    }
+
+
+    fn lt_zero(&self) -> bool {
+        self < &Self::zero()
+    }
+
+    fn gt_zero(&self) -> bool {
+        self > &Self::zero()
+    }
+
+    fn lte_zero(&self) -> bool {
+        self <= &Self::zero()
+    }
+
+    fn gte_zero(&self) -> bool {
+        self >= &Self::zero()
+    }
+
+
+    fn lt_one(&self) -> bool {
+        self < &Self::one()
+    }
+
+    fn gt_one(&self) -> bool {
+        self > &Self::one()
+    }
+
+    fn lte_one(&self) -> bool {
+        self <= &Self::one()
+    }
+
+    fn gte_one(&self) -> bool {
+        self >= &Self::one()
+    }
 }
 
 
@@ -31,13 +76,15 @@ macro_rules! impl_scalar {
 }
 
 
-impl_scalar!(i8, i16, i32, i64, f32, f64);
+impl_scalar!(f32, f64, i8, i16, i32, i64);
 
 
 pub trait Vector {
     type Dims: Dim;
 
     type Scalar: Scalar;
+
+    fn size(&self) -> Self::Dims;
 }
 
 
@@ -55,6 +102,10 @@ pub trait Dot<RHS: Vector = Self>: Vector<Dims = RHS::Dims> {
 
 pub trait VectorNorm: Vector {
     fn norm(&self) -> Self::Scalar;
+
+    fn squared_norm(&self) -> Self::Scalar {
+        self.norm() * self.norm()
+    }
 }
 
 
@@ -147,5 +198,5 @@ pub trait MatrixMul<RHS: Matrix<Rows = <Self as Matrix>::Cols>,
 
 
 pub trait MatrixIdentity: Square {
-    fn eye(Self::Rows) -> Self;
+    fn eye(Self::Side) -> Self;
 }

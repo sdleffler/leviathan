@@ -1,5 +1,6 @@
 pub trait Float {
     fn sqrt(self) -> Self;
+    fn recip(self) -> Self;
 }
 
 
@@ -9,6 +10,11 @@ macro_rules! impl_float {
             #[inline]
             fn sqrt(self) -> $t {
                 self.sqrt()
+            }
+
+            #[inline]
+            fn recip(self) -> $t {
+                self.recip()
             }
         })*
     }
