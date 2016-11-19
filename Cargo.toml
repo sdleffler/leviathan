@@ -10,7 +10,8 @@ unreachable = "0.1"
 void = "1.0.2"
 
 [dependencies.exact-size-iterator-traits]
-path = "../exact-size-iterator-traits"
+git = "https://github.com/sdleffler/exact-size-iterator-traits-rs.git"
+# path = "../exact-size-iterator-traits"
 
 [dev-dependencies]
 compiletest_rs = "0.2.4"

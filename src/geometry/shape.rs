@@ -213,7 +213,7 @@ impl<'a, 'b, T: Scalar, D: Dim, A: Shape<Scalar = T, Dims = D>, B: Shape<Scalar 
 
 
     fn centroid(&self) -> Point<T, D> {
-        self.a.centroid() + self.b.centroid().into()
+        self.a.centroid() + Vect::from(self.b.centroid())
     }
 }
 
@@ -227,7 +227,7 @@ impl<'a,
 
 impl<'a, 'b, T: Clone + Scalar, D: Dim, A: Shape<Scalar = T, Dims = D> + SupportMapping, B: Shape<Scalar = T, Dims = D> + SupportMapping> SupportMapping for MinkowskiSum<'a, 'b, T, D, A, B> {
     fn support(&self, dir: &Vect<T, D>) -> Point<T, D> {
-        self.a.support(dir) + self.b.support(dir).into()
+        self.a.support(dir) + Vect::from(self.b.support(dir))
     }
 }
 

@@ -5,25 +5,25 @@ use iter_exact::{ChainExactExt, CollectExactExt, FromExactSizeIterator};
 use linalg::*;
 use linalg::solve::gaussian::GaussianNullspaceExt;
 use num::traits::Float;
-use typehack::data::*;
-use typehack::dim::{Dim, DimMul};
+use typehack::prelude::*;
+use typehack::data;
 
 
 #[macro_export]
 macro_rules! Point {
-    ($($xs:expr),* $(,)*) => (Point { vect: Vect![$($xs),*] });
+    ($($xs:expr),* $(,)*) => ($crate::geometry::primitive::Point::from(Vect![$($xs),*]));
 }
 
 
 #[macro_export]
 macro_rules! Simplex {
-    ($($pts:expr),* $(,)*) => (Simplex { points: data![$($pts),*] });
+    ($($pts:expr),* $(,)*) => ($crate::geometry::primitive::Simplex { points: data![$($pts),*] });
 }
 
 
 #[macro_export]
 macro_rules! Facet {
-    ($($pts:expr),* $(,)*) => (Facet { points: data![$($pts),*] });
+    ($($pts:expr),* $(,)*) => ($crate::geometry::primitive::Facet { points: data![$($pts),*] });
 }
 
 
@@ -69,6 +69,33 @@ impl<T: Scalar, N: Dim> Add<Vect<T, N>> for Point<T, N> {
 
     fn add(self, rhs: Vect<T, N>) -> Point<T, N> {
         Point { vect: self.vect + rhs }
+    }
+}
+
+
+impl<'a, T: Scalar, N: Dim> Add<Vect<T, N>> for &'a Point<T, N> {
+    type Output = Point<T, N>;
+
+    fn add(self, rhs: Vect<T, N>) -> Point<T, N> {
+        Point { vect: &self.vect + rhs }
+    }
+}
+
+
+impl<'b, T: Scalar, N: Dim> Add<&'b Vect<T, N>> for Point<T, N> {
+    type Output = Point<T, N>;
+
+    fn add(self, rhs: &'b Vect<T, N>) -> Point<T, N> {
+        Point { vect: self.vect + rhs }
+    }
+}
+
+
+impl<'a, 'b, T: Scalar, N: Dim> Add<&'b Vect<T, N>> for &'a Point<T, N> {
+    type Output = Point<T, N>;
+
+    fn add(self, rhs: &'b Vect<T, N>) -> Point<T, N> {
+        Point { vect: &self.vect + rhs }
     }
 }
 
@@ -165,7 +192,7 @@ impl<T: Copy + Scalar, N: Dim> Copy for Plane<T, N> where Vect<T, N>: Copy {}
 impl<T: Clone + Scalar + Float, N: Dim> Plane<T, N>
     where Vect<T, N>: Clone
 {
-    pub fn signed_distance(&self, p: Point<T, N>) -> T {
+    pub fn signed_distance(&self, p: &Point<T, N>) -> T {
         (p - &self.p0).component(self.n.clone())
     }
 }
@@ -225,7 +252,7 @@ impl<T: Copy + Scalar, N: Dim> Copy for Facet<T, N> where Data<Point<T, N>, N>: 
 
 impl<T: Scalar, N: Dim> IntoIterator for Facet<T, N> {
     type Item = Point<T, N>;
-    type IntoIter = IntoIter<Point<T, N>, N>;
+    type IntoIter = data::IntoIter<Point<T, N>, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.points.into_iter()
@@ -254,5 +281,89 @@ impl<T: Scalar, N: Dim> Index<usize> for Facet<T, N> {
 impl<T: Scalar, N: Dim> IndexMut<usize> for Facet<T, N> {
     fn index_mut(&mut self, idx: usize) -> &mut Point<T, N> {
         &mut self.points[idx]
+    }
+}
+
+
+pub type SimplexSubset<'a, T: Scalar, N: Dim> = DataVec<&'a Point<T, N>, N::Succ>;
+
+impl<'a, T: Scalar + Float, N: Dim> SimplexSubset<'a, T, N> {
+    pub fn distance(&self, p: &Point<T, N>, dim: N) -> T {
+        // This nearest-point-on-simplex-subset-to-origin routine is torn straight from GJK.
+        // We subtract `pt` from every point of our simplex so that it becomes the origin. Problem
+        // solved?
+
+        let simplex: DataVec<Vect<T, N>, N::Succ> =
+            self.clone().into_iter().map(|&y| y - p).collect_exact();
+
+        let d = dim.reify();
+
+        let dots: Mat<T, _, _> = unsafe {
+            let mut dots: Mat<T, _, _> = Mat::uninitialized(dim.succ(), dim.succ());
+
+            for (i, y_i) in simplex.iter().enumerate() {
+                for (j, y_j) in (i..).zip(&simplex[i..]) {
+                    dots[[i, j]] = simplex[j].clone().dot(y_i.clone());
+                    dots[[j, i]] = dots[[i, j]].clone();
+                }
+            }
+
+            dots
+        };
+
+        let deltas: Mat<T, _, _> = unsafe {
+            let mut deltas: Mat<T, _, _> = Mat::uninitialized(B1::as_data().shl(dim.succ()),
+                                                              dim.succ());
+
+            for s in 1usize..(1 << d) {
+                for j in (0..simplex.len()).filter(|&j| s & (1 << j) != 0) {
+                    let s_p = s & !(1 << j);
+                    let k = s_p.trailing_zeros() as usize; // k = min i, i ∈ Iₛ where Iₛ is now 0..simplex.len() without j.
+
+                    deltas[[s, j]] = if s.count_ones() == 1 {
+                        T::one()
+                    } else {
+                        (0..simplex.len())
+                            .filter(|&i| s_p & (1 << i) != 0)
+                            .map(|i| {
+                                deltas[[s_p, i]].clone() *
+                                (dots[[i, k]].clone() - dots[[i, j]].clone())
+                            })
+                            .sum()
+                    };
+                }
+            }
+
+            deltas
+        };
+
+        // TODO: When break-with-non-unit-value lands in stable Rust, use it here.
+        'subsets: for s in 1..(1 << simplex.len()) {
+            for i in 0..simplex.len() {
+                let i_in_s = s & (1 << i) != 0; // i ∈ Iₛ ?
+
+                if (i_in_s && deltas[[s, i]].lte_zero()) ||
+                   (!i_in_s && deltas[[s | (1 << i), i]].gt_zero()) {
+                    continue 'subsets;
+                }
+            }
+
+            let delta_total: T = (0..simplex.len())
+                .filter(|i| s & (1usize << i) != 0)
+                .map(|i| deltas[[s, i]].clone())
+                .sum();
+
+            let offset: Vect<T, N> = (0..simplex.len())
+                .filter(|i| s & (1usize << i) != 0)
+                .map(|i| simplex[i].clone() * (deltas[[s, i]].clone() / delta_total.clone()))
+                .sum();
+
+            return offset.norm();
+        }
+
+        panic!("Numerical instability has caused the algorithm to progress to this point. \
+                Someone needs to go find Sean and lock him in the basement until he tears the \
+                backup procedure out of GJK and sticks it in here too. Or we could just try \
+                returning zer. It's probably close enough not to matter.");
     }
 }

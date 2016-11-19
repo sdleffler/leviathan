@@ -19,6 +19,9 @@ pub trait Scalar: Clone + Sized + Zero + One +
     fn abs(&self) -> Self;
 
 
+    fn from_usize(usize) -> Self;
+
+
     fn eq_zero(&self) -> bool {
         self == &Self::zero()
     }
@@ -69,6 +72,10 @@ macro_rules! impl_scalar {
             impl Scalar for $t {
                 fn abs(&self) -> Self {
                     $t::abs(*self)
+                }
+
+                fn from_usize(i: usize) -> Self {
+                    i as $t
                 }
             }
         )*

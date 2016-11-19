@@ -13,7 +13,9 @@ pub trait Dim: Eq + Debug + Copy {
     fn from_usize(usize) -> Self;
 
     fn reify(&self) -> usize;
+
     fn succ(self) -> Self::Succ;
+    fn pred(self) -> Self::Pred;
 
     fn double(self) -> Self::Double;
 }
@@ -43,6 +45,10 @@ impl<N: Nat> Dim for N {
         N::Succ::as_data()
     }
 
+    fn pred(self) -> Self::Pred {
+        N::Pred::as_data()
+    }
+
     fn double(self) -> Self::Double {
         N::Double::as_data()
     }
@@ -68,6 +74,10 @@ impl Dim for Dyn {
 
     fn succ(self) -> Self::Succ {
         Dyn(self.0 + 1)
+    }
+
+    fn pred(self) -> Self::Pred {
+        Dyn(self.0 - 1)
     }
 
     fn double(self) -> Self::Double {

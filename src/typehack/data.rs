@@ -323,7 +323,6 @@ impl<T, S: Size<T>> Data<T, S> {
         data
     }
 
-
     pub fn from_slice(s: S, slice: &[T]) -> Data<T, S>
         where T: Clone
     {
@@ -345,7 +344,6 @@ impl<T, S: Size<T>> Data<T, S> {
         data
     }
 
-
     pub fn from_fn<F: Fn(usize) -> T>(s: S, f: F) -> Data<T, S> {
         let mut data: Self;
 
@@ -363,7 +361,6 @@ impl<T, S: Size<T>> Data<T, S> {
         data
     }
 
-
     pub unsafe fn uninitialized(s: S) -> Data<T, S> {
         Data {
             size: s,
@@ -371,6 +368,44 @@ impl<T, S: Size<T>> Data<T, S> {
         }
     }
 
+    pub fn extend(self, t: T) -> Data<T, S::Succ> {
+        let mut data: Data<T, S::Succ>;
+        let s = self.size.succ();
+
+        unsafe {
+            data = Data::uninitialized(s);
+
+            for (i, val) in self.into_iter().enumerate() {
+                ptr::write(&mut data[i], val);
+            }
+        }
+
+        data
+    }
+
+    pub fn contract(self, idx: usize) -> Data<T, S::Pred> {
+        let len = self.size.reify();
+        assert!(idx < len);
+
+        let mut data: Data<T, S::Pred>;
+        let s = self.size.pred();
+
+        unsafe {
+            data = Data::uninitialized(s);
+
+            for i in 0..idx {
+                ptr::write(&mut data[i], ptr::read(&self[i]));
+            }
+
+            for i in idx..len {
+                ptr::write(&mut data[i], ptr::read(&self[i + 1]));
+            }
+
+            self.forget();
+        }
+
+        data
+    }
 
     pub unsafe fn forget(self) {
         self.data.forget_internals();
@@ -468,7 +503,7 @@ impl<T> FromIterator<T> for Data<T, Dyn> {
 }
 
 
-impl<T, N: Size<T>> FromExactSizeIterator<T> for Data<T, N> {
+impl<T, N: Dim> FromExactSizeIterator<T> for Data<T, N> {
     fn from_exact_size_iter<I: IntoIterator<Item = T>>(iter: I) -> Self
         where I::IntoIter: ExactSizeIterator
     {
@@ -492,22 +527,29 @@ impl<T, N: Size<T>> FromExactSizeIterator<T> for Data<T, N> {
 }
 
 
+#[derive(Clone)]
 pub struct DataVec<T, N: Size<T>> {
     data: Option<Data<T, N>>,
     len: usize,
 }
 
 
+impl<T, N: Dim> From<DataVec<T, N>> for Data<T, N> {
+    fn from(mut dvec: DataVec<T, N>) -> Data<T, N> {
+        unsafe { dvec.data.take().unchecked_unwrap() }
+    }
+}
+
+
 impl<T, N: Size<T>> Drop for DataVec<T, N> {
     fn drop(&mut self) {
         unsafe {
-            {
-                let data = self.data.as_ref().unchecked_unwrap();
+            if self.data.is_some() {
+                let data = self.data.take().unchecked_unwrap();
                 for i in 0..self.len {
                     mem::drop(ptr::read(&data[i]));
                 }
             }
-            self.data.take().unchecked_unwrap().forget()
         }
     }
 }
@@ -550,12 +592,33 @@ impl<T, N: Size<T>> DataVec<T, N> {
         }
     }
 
-    pub fn insert(&mut self, idx: usize, elem: T) {
+    pub fn set(&mut self, idx: usize, elem: T) {
         unsafe {
             let data = self.data.as_mut().unchecked_unwrap();
             assert!(idx <= self.len && idx < data.size.reify());
             data[idx] = elem;
             self.len = cmp::max(self.len, idx + 1);
+        }
+    }
+
+    pub fn insert(&mut self, idx: usize, elem: T) {
+        unsafe {
+            let data = self.data.as_mut().unchecked_unwrap();
+            assert!(idx <= self.len && idx < data.size.reify());
+            for i in idx..self.len {
+                ptr::write(&mut data[i + 1], ptr::read(&data[i]));
+            }
+            ptr::write(&mut data[idx], elem);
+            self.len = self.len + 1;
+        }
+    }
+
+    pub fn sorted_insert(&mut self, elem: T)
+        where T: Ord
+    {
+        match self.binary_search(&elem) {
+            Ok(_) => {}
+            Err(idx) => self.insert(idx, elem),
         }
     }
 
@@ -565,6 +628,10 @@ impl<T, N: Size<T>> DataVec<T, N> {
 
     pub fn size(&self) -> N {
         unsafe { self.data.as_ref().unchecked_unwrap().size }
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.len >= unsafe { self.data.as_ref().unchecked_unwrap().size.reify() }
     }
 }
 

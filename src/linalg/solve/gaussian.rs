@@ -78,7 +78,11 @@ impl<T: Clone + Scalar, M: Size<T> + DimMul<N, Result = P>, N: Size<T>, P: Size<
         // We can proceed by attempting to find the first non-pivot column. If we find none, the
         // nullspace is the zero vector.
 
+        debug!("Searching for free variables...");
+
         for i in 0..cols {
+            debug!("Checking column {}...", i);
+
             // This direct zero-comparison makes me really nervous. Numerical instability could
             // seriously kill this. TODO: Find a reasonable epsilon to compare with instead.
             if (i < rows && self[[i, i]].eq_zero()) || i >= rows {
@@ -86,12 +90,16 @@ impl<T: Clone + Scalar, M: Size<T> + DimMul<N, Result = P>, N: Size<T>, P: Size<
 
                 for j in 0..rows {
                     if self[[j, i]].eq_zero() {
-                        x[j] = T::one();
+                        debug!("First free variable is found, in row {}.", j);
+
+                        x[i] = T::one();
                         return x;
                     }
 
                     x[j] = -self[[j, i]].clone();
                 }
+
+                debug!("Nullspace element found, with only one free variable.");
 
                 x[rows] = T::one();
                 return x;
@@ -169,6 +177,21 @@ mod tests {
 
     use super::*;
     use linalg::{Column, Vect, VectorNorm};
+
+    #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn ge_nullspace_1x2() {
+        let _ = env_logger::init();
+
+        let a = Mat![[1., 0.]];
+
+        let c = a.clone().ge_null_elem();
+
+        debug!("c: {:?}", c);
+        debug!("a * c: {:?}", Vect::from(a.clone() * c.clone().as_column::<Column>()));
+
+        assert!(Vect::from(a * c.as_column::<Column>()).norm() < 0.000001);
+    }
 
     #[test]
     #[cfg_attr(rustfmt, rustfmt_skip)]

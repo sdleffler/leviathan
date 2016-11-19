@@ -2,16 +2,14 @@ use geometry::primitive::Point;
 use geometry::shape::SupportMapping;
 use linalg::{Dot, Mat, Scalar, Vect, VectorNorm};
 use num::traits::Float;
-use typehack::binary::{I, Nat};
-use typehack::data::DataVec;
-use typehack::dim::{Dim, DimMul, DimShl};
+use typehack::prelude::*;
 
 
 struct DistanceCache<T: Scalar, D: Dim> {
     dims: D,
     simplex: DataVec<Vect<T, D>, D::Succ>,
     dots: Mat<T, D::Succ, D::Succ>,
-    deltas: Mat<T, <I as DimShl<D::Succ>>::Result, D::Succ>,
+    deltas: Mat<T, <B1 as DimShl<D::Succ>>::Result, D::Succ>,
     subset: usize,
 }
 
@@ -25,7 +23,7 @@ impl<T: Scalar + Clone, D: Dim> DistanceCache<T, D>
                 dims: d,
                 simplex: DataVec::with_capacity(d.succ()),
                 dots: Mat::uninitialized(d.succ(), d.succ()),
-                deltas: Mat::uninitialized(I::as_data().shl(d.succ()), d.succ()),
+                deltas: Mat::uninitialized(B1::as_data().shl(d.succ()), d.succ()),
                 subset: 0,
             }
         }
@@ -121,7 +119,7 @@ impl<T: Scalar + Clone, D: Dim> DistanceCache<T, D>
         } else {
             // The simplex is *full.* The next place to overwrite is indicated by the "next" field of
             // the cache.
-            self.simplex.insert(r, w_k);
+            self.simplex.set(r, w_k);
             debug!("Simplex full: discarded vertex: {}.", r);
             // We now compute our dot products, but this time with *all* members:
             for (i, y_i) in self.simplex.iter().enumerate() {
@@ -176,7 +174,7 @@ impl<T: Scalar + Clone, D: Dim> DistanceCache<T, D>
         }
 
         // TODO: When break-with-non-unit-value lands in stable Rust, use it here.
-        'subsets: for s in 1..(1 << self.simplex.len()) {
+        'subsets: for s in (1..(1 << self.simplex.len())).filter(|&s| s & (1 << r) != 0) {
             debug!("Testing subset {:b}...", s);
 
             for i in 0..self.simplex.len() {
@@ -207,21 +205,6 @@ impl<T: Scalar + Clone, D: Dim> DistanceCache<T, D>
 
             debug!("Success: subset {:b} is a unique solution.", s);
             self.subset = s;
-
-            // let delta_total: T = (0..self.simplex.len())
-            //     .filter(|i| s & (1usize << i) != 0)
-            //     .map(|i| self.deltas[[s, i]].clone())
-            //     .sum();
-            //
-            // debug!("Total delta (linsys determinant): {:?}", delta_total);
-            //
-            // let nu = (0..self.simplex.len())
-            //     .filter(|i| s & (1usize << i) != 0)
-            //     .map(|i| {
-            //         debug!("Calculating Δ_{} as {:?}... ", i, self.deltas[[s, i]]);
-            //         self.simplex[i].clone() * (self.deltas[[s, i]].clone() / delta_total.clone())
-            //     })
-            //     .sum();
 
             return Some(self.from_barycentric(&self.simplex));
         }
@@ -264,8 +247,8 @@ impl<T: Clone + Scalar + Float + From<f64>, A, B> GjkExt<B> for A
         loop {
             let search_dir = -&nearest;
             let (supp_a, supp_b) = (a.support(&search_dir), b.support(&search_dir));
-            a_pts.insert(cache.free_subset_slot(), supp_a.clone().into());
-            b_pts.insert(cache.free_subset_slot(), supp_b.clone().into());
+            a_pts.set(cache.free_subset_slot(), supp_a.clone().into());
+            b_pts.set(cache.free_subset_slot(), supp_b.clone().into());
             nearest = match cache.nearest(supp_a - supp_b) {
                 Some(n) => {
                     if (nearest.clone() - n.clone()).norm() > epsilon.into() {
