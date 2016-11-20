@@ -523,7 +523,7 @@ macro_rules! mtra_impl {
             let mut out = DenseMat {
                 rows: $mat.cols,
                 cols: $mat.rows,
-                elems: Data::uninitialized($mat.elems.size),
+                elems: Data::uninitialized($mat.elems.size()),
                 phantom: PhantomData,
             };
 

@@ -66,7 +66,7 @@ pub trait Scalar: Clone + Sized + Zero + One +
 }
 
 
-macro_rules! impl_scalar {
+macro_rules! impl_scalar_integral {
     ($($t:ident),*) => {
         $(
             impl Scalar for $t {
@@ -83,7 +83,68 @@ macro_rules! impl_scalar {
 }
 
 
-impl_scalar!(f32, f64, i8, i16, i32, i64);
+macro_rules! impl_scalar_float {
+    ($($t:ident),*) => {
+        $(
+            impl Scalar for $t {
+                fn abs(&self) -> Self {
+                    $t::abs(*self)
+                }
+
+                fn from_usize(i: usize) -> Self {
+                    i as $t
+                }
+
+
+                fn eq_zero(&self) -> bool {
+                    self.abs() < ::std::$t::EPSILON
+                }
+
+                fn eq_one(&self) -> bool {
+                    (self - 1.).abs() < ::std::$t::EPSILON
+                }
+
+
+                fn lt_zero(&self) -> bool {
+                    *self < -::std::$t::EPSILON
+                }
+
+                fn gt_zero(&self) -> bool {
+                    *self > ::std::$t::EPSILON
+                }
+
+                fn lte_zero(&self) -> bool {
+                    *self < ::std::$t::EPSILON
+                }
+
+                fn gte_zero(&self) -> bool {
+                    *self > -::std::$t::EPSILON
+                }
+
+
+                fn lt_one(&self) -> bool {
+                    (self - 1.) < -::std::$t::EPSILON
+                }
+
+                fn gt_one(&self) -> bool {
+                    (self - 1.) > ::std::$t::EPSILON
+                }
+
+                fn lte_one(&self) -> bool {
+                    (self - 1.) < ::std::$t::EPSILON
+                }
+
+                fn gte_one(&self) -> bool {
+                    (self - 1.) > -::std::$t::EPSILON
+                }
+            }
+        )*
+    }
+}
+
+
+impl_scalar_integral!(i8, i16, i32, i64);
+impl_scalar_float!(f32, f64);
 
 
 pub trait Vector {

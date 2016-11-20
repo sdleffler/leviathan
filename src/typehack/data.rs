@@ -7,12 +7,68 @@ use std::ops::{Deref, DerefMut};
 use std::ptr;
 use std::slice;
 
-use unreachable::UncheckedOptionExt;
+use unreachable::unreachable;
 
 use iter_exact::FromExactSizeIterator;
 
 use typehack::binary::*;
 use typehack::dim::*;
+
+
+#[derive(Clone)]
+#[repr(u8)]
+enum MaybeDropped<T> {
+    Allocated(T),
+    Dropped,
+}
+
+use self::MaybeDropped::*;
+
+
+impl<T> MaybeDropped<T> {
+    fn unwrap(self) -> T {
+        match self {
+            Allocated(obj) => obj,
+            Dropped => unreachable!("Attempted to access dropped object!"),
+        }
+    }
+
+    unsafe fn unchecked_unwrap(self) -> T {
+        match self {
+            Allocated(obj) => obj,
+            Dropped => unreachable(),
+        }
+    }
+
+    fn take(&mut self) -> MaybeDropped<T> {
+        mem::replace(self, Dropped)
+    }
+
+    fn as_ref(&self) -> MaybeDropped<&T> {
+        match *self {
+            Allocated(ref obj) => Allocated(obj),
+            Dropped => Dropped,
+        }
+    }
+
+    fn as_mut(&mut self) -> MaybeDropped<&mut T> {
+        match *self {
+            Allocated(ref mut obj) => Allocated(obj),
+            Dropped => Dropped,
+        }
+    }
+
+    fn is_allocated(&self) -> bool {
+        match *self {
+            Allocated(_) => true,
+            Dropped => false,
+        }
+    }
+
+    fn is_dropped(&self) -> bool {
+        !self.is_allocated()
+    }
+}
 
 
 #[macro_export]
@@ -65,11 +121,9 @@ pub struct PopulatedNode<E, C> {
 }
 
 
-
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct EmptyNode<E, C> {
-    e: PhantomData<E>,
+pub struct EmptyNode<C> {
     l: C,
     r: C,
 }
@@ -88,12 +142,11 @@ impl<E, C: DependentClone<E>> DependentClone<E> for PopulatedNode<E, C> {
 }
 
 
-impl<E, C: DependentClone<E>> DependentClone<E> for EmptyNode<E, C> {
+impl<E, C: DependentClone<E>> DependentClone<E> for EmptyNode<C> {
     fn dependent_clone(&self) -> Self
         where E: Clone
     {
         EmptyNode {
-            e: PhantomData,
             l: self.l.dependent_clone(),
             r: self.r.dependent_clone(),
         }
@@ -124,7 +177,7 @@ impl<E> Raw<E> for P {
 }
 
 impl<E, N: Nat> Raw<E> for O<N> {
-    type Data = EmptyNode<E, <N as Raw<E>>::Data>;
+    type Data = EmptyNode<<N as Raw<E>>::Data>;
 }
 
 impl<E, N: Nat> Raw<E> for I<N> {
@@ -133,30 +186,40 @@ impl<E, N: Nat> Raw<E> for I<N> {
 
 
 pub trait Diceable<E, D: Dim> {
+    fn size(&self) -> D;
+
     unsafe fn uninitialized(D) -> Self;
     unsafe fn forget_internals(self);
 
-    unsafe fn into_slice<'a>(&'a self, D) -> &'a [E];
-    unsafe fn into_mut_slice<'a>(&'a mut self, D) -> &'a mut [E];
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E];
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E];
 }
 
 impl<E, D: Dim> Diceable<E, D> for () {
+    fn size(&self) -> D {
+        D::from_usize(0)
+    }
+
     unsafe fn uninitialized(dim: D) -> () {
         () // It's a fscking unit.
     }
 
     unsafe fn forget_internals(mut self) {} // It's a fscking unit.
 
-    unsafe fn into_slice<'a>(&'a self, dim: D) -> &'a [E] {
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
         &[]
     }
 
-    unsafe fn into_mut_slice<'a>(&'a mut self, dim: D) -> &'a mut [E] {
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E] {
         &mut []
     }
 }
 
 impl<E, D: Dim> Diceable<E, D> for Vec<E> {
+    fn size(&self) -> D {
+        D::from_usize(self.len())
+    }
+
     unsafe fn uninitialized(dim: D) -> Vec<E> {
         // We can create a Vec with uninitialized memory by asking for a given capacity, and
         // then manually setting its length.
@@ -173,16 +236,20 @@ impl<E, D: Dim> Diceable<E, D> for Vec<E> {
         self.set_len(0);
     }
 
-    unsafe fn into_slice<'a>(&'a self, dim: D) -> &'a [E] {
-        &self[..dim.reify()]
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
+        &self[..]
     }
 
-    unsafe fn into_mut_slice<'a>(&'a mut self, dim: D) -> &'a mut [E] {
-        &mut self[..dim.reify()]
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E] {
+        &mut self[..]
     }
 }
 
-impl<E, D: Nat> Diceable<E, D> for EmptyNode<E, <D::ShrOnce as Raw<E>>::Data> {
+impl<E, D: Nat> Diceable<E, D> for EmptyNode<<D::ShrOnce as Raw<E>>::Data> {
+    fn size(&self) -> D {
+        D::as_data()
+    }
+
     unsafe fn uninitialized(_: D) -> Self {
         mem::uninitialized()
     }
@@ -191,16 +258,20 @@ impl<E, D: Nat> Diceable<E, D> for EmptyNode<E, <D::ShrOnce as Raw<E>>::Data> {
         mem::forget(self);
     }
 
-    unsafe fn into_slice<'a>(&'a self, _: D) -> &'a [E] {
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
         slice::from_raw_parts(mem::transmute::<&Self, *const E>(self), D::as_usize())
     }
 
-    unsafe fn into_mut_slice<'a>(&'a mut self, _: D) -> &'a mut [E] {
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E] {
         slice::from_raw_parts_mut(mem::transmute::<&mut Self, *mut E>(self), D::as_usize())
     }
 }
 
 impl<E, D: Nat> Diceable<E, D> for PopulatedNode<E, <D::ShrOnce as Raw<E>>::Data> {
+    fn size(&self) -> D {
+        D::as_data()
+    }
+
     unsafe fn uninitialized(_: D) -> Self {
         mem::uninitialized()
     }
@@ -209,16 +280,20 @@ impl<E, D: Nat> Diceable<E, D> for PopulatedNode<E, <D::ShrOnce as Raw<E>>::Data
         mem::forget(self);
     }
 
-    unsafe fn into_slice<'a>(&'a self, _: D) -> &'a [E] {
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
         slice::from_raw_parts(mem::transmute::<&Self, *const E>(self), D::as_usize())
     }
 
-    unsafe fn into_mut_slice<'a>(&'a mut self, _: D) -> &'a mut [E] {
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E] {
         slice::from_raw_parts_mut(mem::transmute::<&mut Self, *mut E>(self), D::as_usize())
     }
 }
 
 impl<E, D: Nat, T> Diceable<E, D> for Box<T> {
+    fn size(&self) -> D {
+        D::as_data()
+    }
+
     unsafe fn uninitialized(_: D) -> Self {
         Box::new(mem::uninitialized())
     }
@@ -228,11 +303,11 @@ impl<E, D: Nat, T> Diceable<E, D> for Box<T> {
         mem::forget(unboxed)
     }
 
-    unsafe fn into_slice<'a>(&'a self, _: D) -> &'a [E] {
+    unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
         slice::from_raw_parts(mem::transmute::<&T, *const E>(self.as_ref()), D::as_usize())
     }
 
-    unsafe fn into_mut_slice<'a>(&'a mut self, _: D) -> &'a mut [E] {
+    unsafe fn into_mut_slice<'a>(&'a mut self) -> &'a mut [E] {
         slice::from_raw_parts_mut(mem::transmute::<&mut T, *mut E>(self.as_mut()),
                                   D::as_usize())
     }
@@ -240,7 +315,7 @@ impl<E, D: Nat, T> Diceable<E, D> for Box<T> {
 
 
 pub trait Size<E>: Dim {
-    type Reify: DependentClone<E> + Diceable<E, Self>;
+    type Reify: DependentClone<E> + Diceable<E, Self> + Sized;
 }
 
 
@@ -271,18 +346,15 @@ impl<E, N: Nat> Size<E> for N
 
 
 #[derive(Copy)]
+#[repr(C)]
 pub struct Data<T, S: Size<T>> {
-    pub size: S,
     data: S::Reify,
 }
 
 
 impl<T: Clone, S: Size<T>> Clone for Data<T, S> {
     fn clone(&self) -> Self {
-        Data {
-            size: self.size,
-            data: self.data.dependent_clone(),
-        }
+        Data { data: self.data.dependent_clone() }
     }
 }
 
@@ -291,14 +363,14 @@ impl<T, S: Size<T>> Deref for Data<T, S> {
     type Target = [T];
 
     fn deref<'a>(&'a self) -> &'a [T] {
-        unsafe { self.data.into_slice(self.size) }
+        unsafe { self.data.into_slice() }
     }
 }
 
 
 impl<T, S: Size<T>> DerefMut for Data<T, S> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] {
-        unsafe { self.data.into_mut_slice(self.size) }
+        unsafe { self.data.into_mut_slice() }
     }
 }
 
@@ -310,10 +382,7 @@ impl<T, S: Size<T>> Data<T, S> {
         let mut data: Self;
 
         unsafe {
-            data = Data {
-                size: s,
-                data: S::Reify::uninitialized(s),
-            };
+            data = Data { data: S::Reify::uninitialized(s) };
 
             for loc in data.iter_mut() {
                 ptr::write(loc, elem.clone());
@@ -331,10 +400,7 @@ impl<T, S: Size<T>> Data<T, S> {
         let mut data: Self;
 
         unsafe {
-            data = Data {
-                size: s,
-                data: S::Reify::uninitialized(s),
-            };
+            data = Data { data: S::Reify::uninitialized(s) };
 
             for (i, loc) in data.iter_mut().enumerate() {
                 ptr::write(loc, slice[i].clone());
@@ -348,10 +414,7 @@ impl<T, S: Size<T>> Data<T, S> {
         let mut data: Self;
 
         unsafe {
-            data = Data {
-                size: s,
-                data: S::Reify::uninitialized(s),
-            };
+            data = Data { data: S::Reify::uninitialized(s) };
 
             for (i, loc) in data.iter_mut().enumerate() {
                 ptr::write(loc, f(i));
@@ -362,15 +425,20 @@ impl<T, S: Size<T>> Data<T, S> {
     }
 
     pub unsafe fn uninitialized(s: S) -> Data<T, S> {
-        Data {
-            size: s,
-            data: S::Reify::uninitialized(s),
-        }
+        Data { data: S::Reify::uninitialized(s) }
+    }
+
+    pub fn size(&self) -> S {
+        self.data.size()
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.size().reify()
     }
 
     pub fn extend(self, t: T) -> Data<T, S::Succ> {
         let mut data: Data<T, S::Succ>;
-        let s = self.size.succ();
+        let s = self.size().succ();
 
         unsafe {
             data = Data::uninitialized(s);
@@ -384,11 +452,10 @@ impl<T, S: Size<T>> Data<T, S> {
     }
 
     pub fn contract(self, idx: usize) -> Data<T, S::Pred> {
-        let len = self.size.reify();
-        assert!(idx < len);
+        assert!(idx < self.len());
 
         let mut data: Data<T, S::Pred>;
-        let s = self.size.pred();
+        let s = self.size().pred();
 
         unsafe {
             data = Data::uninitialized(s);
@@ -397,7 +464,7 @@ impl<T, S: Size<T>> Data<T, S> {
                 ptr::write(&mut data[i], ptr::read(&self[i]));
             }
 
-            for i in idx..len {
+            for i in idx..s.reify() {
                 ptr::write(&mut data[i], ptr::read(&self[i + 1]));
             }
 
@@ -435,7 +502,7 @@ impl<T, N: Size<T>> IntoIterator for Data<T, N> {
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter {
-            data: Some(self),
+            data: Allocated(self),
             idx: 0,
         }
     }
@@ -443,7 +510,7 @@ impl<T, N: Size<T>> IntoIterator for Data<T, N> {
 
 
 pub struct IntoIter<T, N: Size<T>> {
-    data: Option<Data<T, N>>,
+    data: MaybeDropped<Data<T, N>>,
     idx: usize,
 }
 
@@ -452,22 +519,24 @@ impl<T, N: Size<T>> Iterator for IntoIter<T, N> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        unsafe {
-            let data = self.data.as_ref().unchecked_unwrap();
-            if self.idx < data.size.reify() {
-                let idx = self.idx;
-                self.idx += 1;
-                Some(ptr::read(&self.data.as_ref().unchecked_unwrap()[idx]))
-            } else {
-                None
-            }
+        match self.data {
+            Allocated(ref data) => unsafe {
+                if self.idx < data.len() {
+                    let idx = self.idx;
+                    self.idx += 1;
+                    Some(ptr::read(&data[idx]))
+                } else {
+                    None
+                }
+            },
+            Dropped => None,
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         unsafe {
             let data = self.data.as_ref().unchecked_unwrap();
-            let remaining = data.size.reify() - self.idx;
+            let remaining = data.len() - self.idx;
             (remaining, Some(remaining))
         }
     }
@@ -482,7 +551,7 @@ impl<T, N: Size<T>> Drop for IntoIter<T, N> {
         unsafe {
             {
                 let data = self.data.as_ref().unchecked_unwrap();
-                for i in self.idx..data.size.reify() {
+                for i in self.idx..data.len() {
                     mem::drop(ptr::read(&data[i]));
                 }
             }
@@ -495,10 +564,7 @@ impl<T, N: Size<T>> Drop for IntoIter<T, N> {
 impl<T> FromIterator<T> for Data<T, Dyn> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let vec: Vec<T> = iter.into_iter().collect();
-        Data {
-            size: Dyn(vec.len()),
-            data: vec,
-        }
+        Data { data: vec }
     }
 }
 
@@ -529,13 +595,14 @@ impl<T, N: Dim> FromExactSizeIterator<T> for Data<T, N> {
 
 #[derive(Clone)]
 pub struct DataVec<T, N: Size<T>> {
-    data: Option<Data<T, N>>,
+    data: MaybeDropped<Data<T, N>>,
     len: usize,
 }
 
 
 impl<T, N: Dim> From<DataVec<T, N>> for Data<T, N> {
     fn from(mut dvec: DataVec<T, N>) -> Data<T, N> {
+        // TODO: Assert sizes match.
         unsafe { dvec.data.take().unchecked_unwrap() }
     }
 }
@@ -543,13 +610,14 @@ impl<T, N: Dim> From<DataVec<T, N>> for Data<T, N> {
 
 impl<T, N: Size<T>> Drop for DataVec<T, N> {
     fn drop(&mut self) {
-        unsafe {
-            if self.data.is_some() {
-                let data = self.data.take().unchecked_unwrap();
+        match self.data.take() {
+            Allocated(data) => unsafe {
                 for i in 0..self.len {
                     mem::drop(ptr::read(&data[i]));
                 }
-            }
+                data.forget();
+            },
+            Dropped => {}
         }
     }
 }
@@ -558,7 +626,7 @@ impl<T, N: Size<T>> Drop for DataVec<T, N> {
 impl<T, N: Nat + Size<T>> DataVec<T, N> {
     pub fn new() -> DataVec<T, N> {
         DataVec {
-            data: Some(unsafe { Data::uninitialized(N::as_data()) }),
+            data: Allocated(unsafe { Data::uninitialized(N::as_data()) }),
             len: 0,
         }
     }
@@ -568,16 +636,19 @@ impl<T, N: Nat + Size<T>> DataVec<T, N> {
 impl<T, N: Size<T>> DataVec<T, N> {
     pub fn with_capacity(len: N) -> DataVec<T, N> {
         DataVec {
-            data: Some(unsafe { Data::uninitialized(len) }),
+            data: Allocated(unsafe { Data::uninitialized(len) }),
             len: 0,
         }
     }
 
-    pub fn push(&mut self, elem: T) {
+    pub fn push(&mut self, elem: T)
+        where T: ::std::fmt::Debug
+    {
         unsafe {
+            debug!("data is some? {:?}", self.data.is_allocated());
             let data = self.data.as_mut().unchecked_unwrap();
-            assert!(self.len < data.size.reify());
-            data[self.len] = elem;
+            assert!(self.len < data.len());
+            ptr::write(&mut data[self.len], elem);
             self.len += 1;
         }
     }
@@ -595,16 +666,20 @@ impl<T, N: Size<T>> DataVec<T, N> {
     pub fn set(&mut self, idx: usize, elem: T) {
         unsafe {
             let data = self.data.as_mut().unchecked_unwrap();
-            assert!(idx <= self.len && idx < data.size.reify());
-            data[idx] = elem;
-            self.len = cmp::max(self.len, idx + 1);
+            assert!(idx <= self.len && idx < data.len());
+            if idx < self.len {
+                data[idx] = elem;
+            } else {
+                ptr::write(&mut data[idx], elem);
+                self.len += 1;
+            }
         }
     }
 
     pub fn insert(&mut self, idx: usize, elem: T) {
         unsafe {
             let data = self.data.as_mut().unchecked_unwrap();
-            assert!(idx <= self.len && idx < data.size.reify());
+            assert!(idx <= self.len && idx < data.len());
             for i in idx..self.len {
                 ptr::write(&mut data[i + 1], ptr::read(&data[i]));
             }
@@ -627,11 +702,11 @@ impl<T, N: Size<T>> DataVec<T, N> {
     }
 
     pub fn size(&self) -> N {
-        unsafe { self.data.as_ref().unchecked_unwrap().size }
+        unsafe { self.data.as_ref().unchecked_unwrap().size() }
     }
 
     pub fn is_full(&self) -> bool {
-        self.len >= unsafe { self.data.as_ref().unchecked_unwrap().size.reify() }
+        self.len >= unsafe { self.data.as_ref().unchecked_unwrap().len() }
     }
 }
 
@@ -655,7 +730,7 @@ impl<T, N: Size<T>> FromExactSizeIterator<T> for DataVec<T, N> {
             }
 
             DataVec {
-                data: Some(data),
+                data: Allocated(data),
                 len: size,
             }
         }
@@ -690,31 +765,32 @@ mod tests {
     #[test]
     fn data_create_p1() {
         let _: Data<i32, B1> = Data::from_elem(B1::as_data(), &0);
-        assert_eq!(mem::size_of::<Data<i32, B1>>(), mem::size_of::<i32>());
+        assert_eq!(mem::size_of::<Data<i32, B1>>(), mem::size_of::<[i32; 1]>());
     }
 
     #[test]
     fn data_create_p2() {
         let _: Data<i32, B2> = Data::from_elem(B2::as_data(), &0);
-        assert_eq!(mem::size_of::<Data<i32, B2>>(), mem::size_of::<i32>() * 2);
+        assert_eq!(mem::size_of::<Data<i32, B2>>(), mem::size_of::<[i32; 2]>());
     }
 
     #[test]
     fn data_create_p4() {
         let _: Data<i32, B4> = Data::from_elem(B4::as_data(), &0);
-        assert_eq!(mem::size_of::<Data<i32, B4>>(), mem::size_of::<i32>() * 4);
+        assert_eq!(mem::size_of::<Data<i32, B4>>(), mem::size_of::<[i32; 4]>());
     }
 
     #[test]
     fn data_create_p8() {
         let _: Data<i32, B8> = Data::from_elem(B8::as_data(), &0);
-        assert_eq!(mem::size_of::<Data<i32, B8>>(), mem::size_of::<i32>() * 8);
+        assert_eq!(mem::size_of::<Data<i32, B8>>(), mem::size_of::<[i32; 8]>());
     }
 
     #[test]
     fn data_create_p16() {
         let _: Data<i32, B16> = Data::from_elem(B16::as_data(), &0);
-        assert_eq!(mem::size_of::<Data<i32, B16>>(), mem::size_of::<i32>() * 16);
+        assert_eq!(mem::size_of::<Data<i32, B16>>(),
+                   mem::size_of::<[i32; 16]>());
     }
 
     #[test]

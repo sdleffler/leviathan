@@ -29,14 +29,14 @@ impl<T: Scalar, N: Size<T>> DenseVec<T, N> {
     pub fn as_column<L: Layout>(self) -> DenseMat<T, N, I, L>
         where N: DimMul<I, Result = N>
     {
-        DenseMat::from_data(self.elems.size, I::as_data(), self.elems)
+        DenseMat::from_data(self.elems.size(), I::as_data(), self.elems)
     }
 
 
     pub fn as_row<L: Layout>(self) -> DenseMat<T, I, N, L>
         where I: DimMul<N, Result = N>
     {
-        DenseMat::from_data(I::as_data(), self.elems.size, self.elems)
+        DenseMat::from_data(I::as_data(), self.elems.size(), self.elems)
     }
 
 
@@ -58,12 +58,12 @@ impl<T: Scalar, N: Size<T>> DenseVec<T, N> {
 
 
     pub fn len(&self) -> usize {
-        self.elems.size.reify()
+        self.elems.len()
     }
 
 
     pub fn size(&self) -> N {
-        self.elems.size
+        self.elems.size()
     }
 
 
@@ -233,7 +233,7 @@ impl<T: Scalar, N: Size<T>> Vector for DenseVec<T, N> {
     type Scalar = T;
 
     fn size(&self) -> N {
-        self.elems.size
+        self.elems.size()
     }
 }
 
@@ -244,7 +244,7 @@ impl<'a, T: Scalar, N: Size<T>> Vector for &'a DenseVec<T, N> {
     type Scalar = T;
 
     fn size(&self) -> N {
-        self.elems.size
+        self.elems.size()
     }
 }
 
@@ -253,9 +253,9 @@ impl<T: Scalar, N: Size<T>> Add for DenseVec<T, N> {
     type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         unsafe {
             for i in 0..n {
@@ -274,9 +274,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Add<&'a DenseVec<T, N>> for DenseVec<T, 
     type Output = Self;
 
     fn add(mut self, rhs: &'a Self) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         for i in 0..n {
             self.elems[i] += rhs.elems[i].clone();
@@ -291,9 +291,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Add<DenseVec<T, N>> for &'a DenseVec<T, 
     type Output = DenseVec<T, N>;
 
     fn add(self, mut rhs: DenseVec<T, N>) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         for i in 0..n {
             rhs.elems[i] += self.elems[i].clone();
@@ -308,9 +308,9 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Add<&'b DenseVec<T, N>> for &'a Dens
     type Output = DenseVec<T, N>;
 
     fn add(self, rhs: &'b DenseVec<T, N>) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        DenseVec::from_fn(self.elems.size,
+        DenseVec::from_fn(self.elems.size(),
                           |i| self.elems[i].clone() + rhs.elems[i].clone())
     }
 }
@@ -320,9 +320,9 @@ impl<T: Scalar, N: Size<T>> Sub for DenseVec<T, N> {
     type Output = Self;
 
     fn sub(mut self, rhs: Self) -> Self {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         unsafe {
             for i in 0..n {
@@ -341,9 +341,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Sub<&'a DenseVec<T, N>> for DenseVec<T, 
     type Output = Self;
 
     fn sub(mut self, rhs: &'a Self) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         for i in 0..n {
             self.elems[i] -= rhs.elems[i].clone();
@@ -358,9 +358,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Sub<DenseVec<T, N>> for &'a DenseVec<T, 
     type Output = DenseVec<T, N>;
 
     fn sub(self, mut rhs: DenseVec<T, N>) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         for i in 0..n {
             rhs.elems[i] -= self.elems[i].clone();
@@ -375,9 +375,9 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Sub<&'b DenseVec<T, N>> for &'a Dens
     type Output = DenseVec<T, N>;
 
     fn sub(self, rhs: &'b DenseVec<T, N>) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        DenseVec::from_fn(self.elems.size,
+        DenseVec::from_fn(self.elems.size(),
                           |i| self.elems[i].clone() - rhs.elems[i].clone())
     }
 }
@@ -387,9 +387,9 @@ impl<T: Scalar, N: Size<T>> Mul for DenseVec<T, N> {
     type Output = Self;
 
     fn mul(mut self, rhs: Self) -> Self {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
 
         unsafe {
             for i in 0..n {
@@ -408,9 +408,9 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Mul<&'b DenseVec<T, N>> for &'a Dens
     type Output = DenseVec<T, N>;
 
     fn mul(self, rhs: &'b DenseVec<T, N>) -> Self::Output {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        DenseVec::from_fn(self.elems.size,
+        DenseVec::from_fn(self.elems.size(),
                           |i| self.elems[i].clone() * rhs.elems[i].clone())
     }
 }
@@ -418,7 +418,7 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Mul<&'b DenseVec<T, N>> for &'a Dens
 
 impl<T: Clone + Scalar, N: Size<T>> MulAssign<T> for DenseVec<T, N> {
     fn mul_assign(&mut self, rhs: T) {
-        for i in 0..self.elems.size.reify() {
+        for i in 0..self.elems.len() {
             self.elems[i] *= rhs.clone();
         }
     }
@@ -439,7 +439,7 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Mul<&'a T> for DenseVec<T, N> {
     type Output = Self;
 
     fn mul(mut self, rhs: &'a T) -> Self::Output {
-        for i in 0..self.elems.size.reify() {
+        for i in 0..self.elems.len() {
             self.elems[i] *= rhs.clone();
         }
 
@@ -452,7 +452,7 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Mul<T> for &'a DenseVec<T, N> {
     type Output = DenseVec<T, N>;
 
     fn mul(self, rhs: T) -> Self::Output {
-        DenseVec::from_fn(self.elems.size, |i| self.elems[i].clone() * rhs.clone())
+        DenseVec::from_fn(self.elems.size(), |i| self.elems[i].clone() * rhs.clone())
     }
 }
 
@@ -461,7 +461,7 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Mul<&'b T> for &'a DenseVec<T, N> {
     type Output = DenseVec<T, N>;
 
     fn mul(self, rhs: &'b T) -> Self::Output {
-        DenseVec::from_fn(self.elems.size, |i| self.elems[i].clone() * rhs.clone())
+        DenseVec::from_fn(self.elems.size(), |i| self.elems[i].clone() * rhs.clone())
     }
 }
 
@@ -470,7 +470,7 @@ impl<T: Clone + Scalar, N: Size<T>> Div<T> for DenseVec<T, N> {
     type Output = Self;
 
     fn div(mut self, rhs: T) -> Self {
-        for i in 0..self.elems.size.reify() {
+        for i in 0..self.elems.len() {
             self.elems[i] /= rhs.clone();
         }
 
@@ -483,7 +483,7 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Div<&'a T> for DenseVec<T, N> {
     type Output = Self;
 
     fn div(mut self, rhs: &'a T) -> Self::Output {
-        for i in 0..self.elems.size.reify() {
+        for i in 0..self.elems.len() {
             self.elems[i] /= rhs.clone();
         }
 
@@ -496,7 +496,7 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Div<T> for &'a DenseVec<T, N> {
     type Output = DenseVec<T, N>;
 
     fn div(self, rhs: T) -> Self::Output {
-        DenseVec::from_fn(self.elems.size, |i| self.elems[i].clone() / rhs.clone())
+        DenseVec::from_fn(self.elems.size(), |i| self.elems[i].clone() / rhs.clone())
     }
 }
 
@@ -505,7 +505,7 @@ impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Div<&'b T> for &'a DenseVec<T, N> {
     type Output = DenseVec<T, N>;
 
     fn div(self, rhs: &'b T) -> Self::Output {
-        DenseVec::from_fn(self.elems.size, |i| self.elems[i].clone() / rhs.clone())
+        DenseVec::from_fn(self.elems.size(), |i| self.elems[i].clone() / rhs.clone())
     }
 }
 
@@ -529,16 +529,16 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Neg for &'a DenseVec<T, N> {
     type Output = DenseVec<T, N>;
 
     fn neg(self) -> Self::Output {
-        DenseVec::from_fn(self.elems.size, |i| -self.elems[i].clone())
+        DenseVec::from_fn(self.elems.size(), |i| -self.elems[i].clone())
     }
 }
 
 
 impl<T: Scalar, N: Size<T>> Dot for DenseVec<T, N> {
     fn dot(self, rhs: Self) -> T {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
         let mut accum = T::zero();
 
         unsafe {
@@ -562,9 +562,9 @@ impl<T: Scalar, N: Size<T>> Dot for DenseVec<T, N> {
 
 impl<'a, T: Clone + Scalar, N: Size<T>> Dot<&'a DenseVec<T, N>> for DenseVec<T, N> {
     fn dot(self, rhs: &'a DenseVec<T, N>) -> T {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
         let mut accum = T::zero();
 
         unsafe {
@@ -587,9 +587,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Dot<&'a DenseVec<T, N>> for DenseVec<T, 
 
 impl<'a, T: Clone + Scalar, N: Size<T>> Dot<DenseVec<T, N>> for &'a DenseVec<T, N> {
     fn dot(self, rhs: DenseVec<T, N>) -> T {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
         let mut accum = T::zero();
 
         unsafe {
@@ -612,9 +612,9 @@ impl<'a, T: Clone + Scalar, N: Size<T>> Dot<DenseVec<T, N>> for &'a DenseVec<T, 
 
 impl<'a, 'b, T: Clone + Scalar, N: Size<T>> Dot<&'b DenseVec<T, N>> for &'a DenseVec<T, N> {
     fn dot(self, rhs: &'b DenseVec<T, N>) -> T {
-        assert_eq!(self.elems.size, rhs.elems.size);
+        assert_eq!(self.elems.size(), rhs.elems.size());
 
-        let n = cmp::min(self.elems.size.reify(), rhs.elems.size.reify());
+        let n = cmp::min(self.elems.len(), rhs.elems.len());
         let mut accum = T::zero();
 
         let lhs = &self.elems[..n];

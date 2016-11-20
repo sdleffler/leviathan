@@ -199,7 +199,7 @@ impl<T: Clone + Scalar + Float, N: Dim> Plane<T, N>
 
 
 impl<T: Clone + Scalar, N: Dim> From<Facet<T, N>> for Plane<T, N> {
-    fn from(facet: Facet<T, N>) -> Plane<T, N> {
+    default fn from(facet: Facet<T, N>) -> Plane<T, N> {
         let mut iter = facet.into_iter();
         let p0 = iter.next().unwrap();
 
@@ -207,6 +207,27 @@ impl<T: Clone + Scalar, N: Dim> From<Facet<T, N>> for Plane<T, N> {
         let n = mat.ge_null_elem();
 
         Plane { n: n, p0: p0 }
+    }
+}
+
+impl<T: Clone + Scalar> From<Facet<T, B3>> for Plane<T, B3> {
+    fn from(facet: Facet<T, B3>) -> Plane<T, B3> {
+        let mut iter = facet.into_iter();
+        let p0 = iter.next().unwrap();
+        let p1 = iter.next().unwrap();
+        let p2 = iter.next().unwrap();
+
+        let a = p1 - p0.clone();
+        let b = p2 - p0.clone();
+
+        // We perform the cross product of `a` and `b` to get the normal vector.
+
+        Plane {
+            n: Vect![a[1].clone() * b[2].clone() - a[2].clone() * b[1].clone(),
+                     a[2].clone() * b[0].clone() - a[0].clone() * b[2].clone(),
+                     a[0].clone() * b[1].clone() - a[1].clone() * b[0].clone()],
+            p0: p0,
+        }
     }
 }
 
@@ -222,7 +243,7 @@ impl<T: Copy + Scalar, N: Dim> Copy for Simplex<T, N> where Data<Point<T, N>, N:
 
 impl<T: Clone + Scalar, N: Dim> Simplex<T, N> {
     pub fn dims(&self) -> N::Succ {
-        self.points.size
+        self.points.size()
     }
 }
 
@@ -365,5 +386,31 @@ impl<'a, T: Scalar + Float, N: Dim> SimplexSubset<'a, T, N> {
                 Someone needs to go find Sean and lock him in the basement until he tears the \
                 backup procedure out of GJK and sticks it in here too. Or we could just try \
                 returning zer. It's probably close enough not to matter.");
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn facet_to_plane_2d_1() {
+        let facet = Facet![Point![0., 1.], Point![1., 0.]];
+        let plane: Plane<_, _> = facet.into();
+
+        assert!(plane.signed_distance(&Point![0., 0.]) * plane.signed_distance(&Point![1., 1.]) <
+                0.);
+    }
+
+    #[test]
+    fn facet_to_plane_3d_1() {
+        let facet = Facet![Point![0.472077, 0.063314, 0.029606],
+                           Point![0.606915, 0.641988, 0.167560],
+                           Point![0.118838, 0.496147, 0.367041]];
+        let plane: Plane<_, _> = facet.into();
+
+        assert!(plane.signed_distance(&Point![0.38620424999999997, 0.44893725000000007, 0.239815]) *
+                plane.signed_distance(&Point![0.554433, 0.549847, 0.032239]) < 0.);
     }
 }
