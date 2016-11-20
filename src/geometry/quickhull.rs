@@ -29,7 +29,7 @@ pub struct ConvexHull<D: Dim> {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PointIdx(usize);
+pub struct PointIdx(pub usize);
 
 impl From<usize> for PointIdx {
     fn from(i: usize) -> Self {

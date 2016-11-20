@@ -246,7 +246,7 @@ impl<T: Clone + Scalar + Float + From<f64>, A, B> GjkExt<B> for A
 
         loop {
             let search_dir = -&nearest;
-            let (supp_a, supp_b) = (a.support(&search_dir), b.support(&search_dir));
+            let (supp_a, supp_b) = (a.support(&search_dir), b.support(&-search_dir));
             a_pts.set(cache.free_subset_slot(), supp_a.clone().into());
             b_pts.set(cache.free_subset_slot(), supp_b.clone().into());
             nearest = match cache.nearest(supp_a - supp_b) {
@@ -268,18 +268,35 @@ impl<T: Clone + Scalar + Float + From<f64>, A, B> GjkExt<B> for A
 mod tests {
     extern crate env_logger;
 
-    use super::DistanceCache;
+    use super::{DistanceCache, GjkExt};
 
-    use linalg::{Vect3, VectorNorm};
+    use geometry::shape::Polygon;
+    use linalg::{Scalar, VectorNorm};
     use typehack::binary::{B2, Nat};
 
 
     #[test]
-    #[ignore]
     fn gjk_triangle_triangle_1() {
         let _ = env_logger::init();
 
-        unimplemented!()
+        let triangle_a = unsafe {
+            Polygon::from_raw_vertices(B2::as_data(),
+                                       vec![Point![1., 2.], Point![4., 1.], Point![2., 4.]])
+        };
+
+        let triangle_b = unsafe {
+            Polygon::from_raw_vertices(B2::as_data(),
+                                       vec![Point![0., -1.], Point![-3., -2.], Point![-1., 1.]])
+        };
+
+        let (nearest_a, nearest_b) = triangle_a.gjk(&triangle_b);
+
+        debug!("Nearest point on a: {:?}, nearest point on b: {:?}.",
+               nearest_a,
+               nearest_b);
+
+        assert!((nearest_a - Vect![1., 2.]).norm().eq_zero());
+        assert!((nearest_b - Vect![-1., 1.]).norm().eq_zero());
     }
 
 

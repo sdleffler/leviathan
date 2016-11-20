@@ -1,4 +1,5 @@
 use geometry::primitive::Point;
+use geometry::quickhull::{PointIdx, QuickHullExt};
 use linalg::{Dot, VectorNorm, Scalar, Vect};
 use num::traits::Float;
 use typehack::dim::Dim;
@@ -142,6 +143,29 @@ pub struct Polygon<T: Scalar, D: Dim> {
 }
 
 
+impl<T: Scalar + Float, D: Dim> Polygon<T, D> {
+    pub fn from_convex_hull(dims: D, points: Vec<Point<T, D>>) -> Self {
+        let cvx_hull = points.quick_hull(dims);
+        Polygon {
+            dims: dims,
+            points: points.into_iter()
+                .enumerate()
+                .filter_map(|(i, p)| cvx_hull.points.binary_search(&PointIdx(i)).ok().and(Some(p)))
+                .collect(),
+            centroid: None,
+        }
+    }
+
+    pub unsafe fn from_raw_vertices(dims: D, points: Vec<Point<T, D>>) -> Self {
+        Polygon {
+            dims: dims,
+            points: points,
+            centroid: None,
+        }
+    }
+}
+
+
 impl<T: Scalar, D: Dim> Shape for Polygon<T, D> {
     type Scalar = T;
     type Dims = D;
@@ -156,15 +180,15 @@ impl<T: Scalar, D: Dim> Shape for Polygon<T, D> {
 }
 
 
-impl<T: Clone + Scalar + From<usize>, D: Dim> Convex for Polygon<T, D> {
+impl<T: Clone + Scalar, D: Dim> Convex for Polygon<T, D> {
     fn interior_point(&self) -> Point<T, D> {
         let sum: Vect<T, D> = self.points.iter().cloned().map(Vect::from).sum();
-        Point::from(sum / T::from(self.points.len()))
+        Point::from(sum / T::from_usize(self.points.len()))
     }
 }
 
 
-impl<T: Clone + Scalar + From<usize>, D: Dim> SupportMapping for Polygon<T, D> {
+impl<T: Clone + Scalar, D: Dim> SupportMapping for Polygon<T, D> {
     fn support(&self, dir: &Vect<T, D>) -> Point<T, D> {
         assert!(self.points.len() > 2);
 
