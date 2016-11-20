@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::mem;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 
@@ -44,19 +45,22 @@ impl From<PointIdx> for usize {
 }
 
 
+#[derive(Debug)]
 struct QhElement<T: Scalar, D: Dim> {
     facet: FacetIndices<D>,
     plane: Plane<T, D>,
     outside: Vec<PointIdx>,
-    neighbors: Vec<(QhFacetRef<T, D>, RidgeIndices<D>)>,
+    neighbors: Vec<(QhFacetWeak<T, D>, RidgeIndices<D>)>,
     visited: bool,
     dead: bool,
+    self_ref: Option<QhFacetRef<T, D>>,
 }
 
 type FacetIndices<D: Dim> = Data<PointIdx, D>;
 type RidgeIndices<D: Dim> = Data<PointIdx, D::Pred>;
 
 type QhFacetRef<T: Scalar, D: Dim> = Rc<RefCell<QhElement<T, D>>>;
+type QhFacetWeak<T: Scalar, D: Dim> = Weak<RefCell<QhElement<T, D>>>;
 
 
 impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
@@ -189,7 +193,7 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                guaranteed_interior_point);
 
         // We now have our full initial simplex. We can now generate our first few facets from it.
-        let mut elements: Vec<QhFacetRef<T, D>> = Vec::with_capacity(dim.succ()
+        let mut elements: Vec<QhFacetWeak<T, D>> = Vec::with_capacity(dim.succ()
             .reify());
 
         let d = dim.succ().reify();
@@ -216,19 +220,25 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
             debug!("Plane constructed from facet: {:?}.", plane);
 
-            let element: QhFacetRef<T, D> = Rc::new(RefCell::new(QhElement {
+            let mut element: QhFacetRef<T, D> = Rc::new(RefCell::new(QhElement {
                 facet: facet,
                 plane: plane,
                 outside: Vec::new(),
                 neighbors: Vec::new(),
                 visited: false,
                 dead: false,
+                self_ref: None,
             }));
+
+            element.borrow_mut().self_ref = Some(element.clone());
 
             debug!("Constructing neighbors for facet ({} neighbors to link.)",
                    elements.len());
 
             for (j, &ref neighbor) in elements.iter().enumerate() {
+                let neighbor = neighbor.upgrade()
+                    .expect("Facets should not be linked to buried neighbors!");
+
                 let ridge: RidgeIndices<D> = (0..j)
                     .chain_exact(j + 1..i)
                     .chain_exact(i + 1..d)
@@ -240,13 +250,13 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                        neighbor.borrow().facet,
                        ridge);
 
-                neighbor.borrow_mut().neighbors.push((element.clone(), ridge.clone()));
-                element.borrow_mut().neighbors.push((neighbor.clone(), ridge));
+                neighbor.borrow_mut().neighbors.push((Rc::downgrade(&element), ridge.clone()));
+                element.borrow_mut().neighbors.push((Rc::downgrade(&neighbor), ridge));
             }
 
             debug!("Facet {} constructed successfully.", i);
 
-            elements.push(element);
+            elements.push(Rc::downgrade(&element));
         }
 
         // We must now generate the conflict sets for our first facets. We do so by looping through
@@ -256,6 +266,9 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                pt_indices.len());
 
         for ref element in elements.iter_mut() {
+            let element = element.upgrade()
+                .expect("Initial simplex points should not yet have had a chance to be buried!");
+
             let mut i = 0;
             while i < pt_indices.len() {
                 let PointIdx(idx) = pt_indices[i];
@@ -280,11 +293,18 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
         let mut nonempty_facets: Vec<_> = elements.iter()
             .cloned()
-            .filter(|ref facet| {
+            .filter_map(|ref facet| {
+                let facet = facet.upgrade()
+                    .expect("Initial simplex points should not yet have had a chance to be \
+                             buried!");
                 debug!("Facet {:?} has {} conflict points;",
                        facet.borrow().facet,
                        facet.borrow().outside.len());
-                !facet.borrow().outside.is_empty()
+                if !facet.borrow().outside.is_empty() {
+                    Some(facet)
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -341,6 +361,9 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
                 for (neighbor, ridge) in
                     facet.borrow().neighbors.iter().map(|&(ref nb, ref ridge)| (nb.clone(), ridge)) {
+                    let neighbor = neighbor.upgrade()
+                        .expect("Facet neighbors should not be buried yet!");
+
                     if !neighbor.borrow().visited {
                         debug!("Checking unvisited neighbor {:?}...",
                                neighbor.borrow().facet);
@@ -418,7 +441,7 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                        neighbor.borrow().facet,
                        ridge);
 
-                let mut new_neighbors = vec![(neighbor.clone(), ridge.clone())];
+                let mut new_neighbors = vec![(Rc::downgrade(&neighbor), ridge.clone())];
 
                 let new_element_rc = Rc::new(RefCell::new(QhElement {
                     facet: new_facet.clone(),
@@ -427,12 +450,15 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                     neighbors: new_neighbors,
                     visited: false,
                     dead: false,
+                    self_ref: None,
                 }));
 
-                debug!("Linking singleton neighbor...");
-                neighbor.borrow_mut().neighbors.push((new_element_rc.clone(), ridge));
+                new_element_rc.borrow_mut().self_ref = Some(new_element_rc.clone());
 
-                elements.push(new_element_rc.clone());
+                debug!("Linking singleton neighbor...");
+                neighbor.borrow_mut().neighbors.push((Rc::downgrade(&new_element_rc), ridge));
+
+                elements.push(Rc::downgrade(&new_element_rc));
 
                 {
                     let mut new_element = new_element_rc.borrow_mut();
@@ -469,8 +495,8 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
                         facet.borrow_mut()
                             .neighbors
-                            .push((new_element_rc.clone(), new_ridge.clone()));
-                        new_element.neighbors.push((facet.clone(), new_ridge));
+                            .push((Rc::downgrade(&new_element_rc), new_ridge.clone()));
+                        new_element.neighbors.push((Rc::downgrade(&facet), new_ridge));
                     }
                 }
 
@@ -489,9 +515,17 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
                 // Unlink this old facet from all its neighbors.
                 for &(ref old_neighbor, _) in old_facet.borrow().neighbors.iter() {
+                    let old_neighbor = old_neighbor.upgrade()
+                        .expect("All neighbors to a given facet (even a dead one) should be \
+                                 valid.");
+
                     debug!("Unlinking neighbor {:?}...", old_neighbor.borrow().facet);
 
                     old_neighbor.borrow_mut().neighbors.retain(|&(ref reflexive, _)| {
+                        let reflexive = reflexive.upgrade()
+                            .expect("When searching for a reference in an old-neighbor list, no \
+                                     facets should be dead yet!");
+
                         (reflexive.as_ref() as *const _) != (old_facet.as_ref() as *const _)
                     });
                 }
@@ -502,6 +536,9 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                 let mut old_facet = old_facet.borrow_mut();
 
                 unassigned_pts.extend(old_facet.outside.drain(..));
+                mem::drop(old_facet.self_ref.take()); // We destroy this old facet by forcibly taking
+                    // and dropping its self-reference - this will cause the Rc to have no more
+                    // strong references, and be deallocated.
             }
 
             debug!("Assigning collected points to new facets... {} points to be assigned.",
@@ -531,47 +568,28 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
         debug!("Quickhull finished. Generating filtered point list...");
 
-        elements.retain(|element| !element.borrow().dead);
-
         let mut pt_list = Vec::new();
+        let mut facet_list = Vec::new();
 
-        for ref element in elements.iter() {
-            for &pt_idx in element.borrow().facet.iter() {
+        let elements = elements.into_iter().filter_map(|e| e.upgrade()).map(|e| {
+            mem::drop(e.borrow_mut().self_ref.take().unwrap());
+            Rc::try_unwrap(e).expect("Facet should only have one strong reference!").into_inner()
+        });
+
+        for element in elements {
+            for &pt_idx in element.facet.iter() {
                 pt_list.push(pt_idx);
             }
+
+            facet_list.push(element.facet);
         }
 
         pt_list.sort();
         pt_list.dedup(); // Is this step necessary?
 
-        // API may change; this little change may be useful.
-        //
-        // let facets = elements.into_iter()
-        //     .filter_map(|element| {
-        //         if !element.borrow().dead {
-        //             Some(element.borrow()
-        //                 .facet
-        //                 .clone()
-        //                 .into_iter()
-        //                 .map(|p_idx| PointIdx(pt_list.binary_search(&p_idx).unwrap()))
-        //                 .collect_exact::<FacetIndices<D>>())
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .collect::<Vec<_>>();
-
-        let facets = elements.into_iter()
-            .map(|element| {
-                element.borrow()
-                    .facet
-                    .clone()
-            })
-            .collect::<Vec<_>>();
-
         ConvexHull {
             points: pt_list,
-            facets: facets,
+            facets: facet_list,
         }
     }
 }
