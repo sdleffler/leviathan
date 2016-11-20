@@ -5,6 +5,8 @@ pub use typehack::data::{Data, DataVec};
 pub use typehack::dim::{Dim, DimAdd, DimMul, DimShl};
 
 
+pub type Succ<M: Dim> = <M as Dim>::Succ;
+
 pub type Sum<M: Dim, N: Dim> = <M as DimAdd<N>>::Result;
 pub type Product<M: Dim, N: Dim> = <M as DimMul<N>>::Result;
 pub type ShiftLeft<M: Dim, N: Dim> = <M as DimShl<N>>::Result;

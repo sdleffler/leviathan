@@ -1,3 +1,4 @@
+use geometry::primitive::Point;
 use geometry::shape::SupportMapping;
 use linalg::{Dot, Mat, Scalar, Vect, VectorNorm};
 use num::traits::Float;
@@ -213,9 +214,34 @@ impl<T: Scalar + Clone, D: Dim> DistanceCache<T, D>
 }
 
 
+pub struct GjkInfo<'a,
+                   A: ?Sized + SupportMapping + 'a,
+                   B: ?Sized + SupportMapping<Scalar = A::Scalar, Dims = A::Dims> + 'a>
+{
+    cache: DistanceCache<A::Scalar, A::Dims>,
+    a: &'a A,
+    a_pts: DataVec<Vect<A::Scalar, A::Dims>, Succ<A::Dims>>,
+    b: &'a B,
+    b_pts: DataVec<Vect<A::Scalar, A::Dims>, Succ<A::Dims>>,
+}
+
+
+impl<'a, A: ?Sized + SupportMapping + 'a, B: ?Sized + SupportMapping<Scalar = A::Scalar, Dims = A::Dims> + 'a> GjkInfo<'a,
+                                                                                           A,
+                                                                                           B> where A::Scalar: Float {
+    pub fn nearest_points(&self) -> (Vect<A::Scalar, A::Dims>, Vect<A::Scalar, A::Dims>) {
+        (Vect::from(self.cache.from_barycentric(&self.a_pts)), Vect::from(self.cache.from_barycentric(&self.b_pts)))
+    }
+
+    pub fn distance(&self) -> A::Scalar {
+        self.cache.from_barycentric(&self.cache.simplex).norm()
+    }
+}
+
+
 pub trait GjkExt<B: SupportMapping<Scalar = Self::Scalar, Dims = Self::Dims>>
     : SupportMapping {
-    fn gjk(&self, &B) -> (Vect<Self::Scalar, Self::Dims>, Vect<Self::Scalar, Self::Dims>);
+    fn gjk<'a>(&'a self, &'a B) -> GjkInfo<'a, Self, B>;
 }
 
 
@@ -223,7 +249,7 @@ impl<T: Clone + Scalar + Float + From<f64>, A, B> GjkExt<B> for A
     where A: SupportMapping<Scalar = T>,
           B: SupportMapping<Scalar = T, Dims = A::Dims>
 {
-    fn gjk(&self, b: &B) -> (Vect<T, A::Dims>, Vect<T, A::Dims>) {
+    fn gjk<'a>(&'a self, b: &'a B) -> GjkInfo<'a, Self, B> {
         let epsilon = 0.00001;
 
         let a = self;
@@ -235,30 +261,45 @@ impl<T: Clone + Scalar + Float + From<f64>, A, B> GjkExt<B> for A
 
         let mut cache = DistanceCache::new(self.dims());
 
-        let mut nearest = {
+        let (mut supp_a, mut supp_b) = {
             let v0 = a.interior_point() - b.interior_point();
-            let (supp_a, supp_b) = (a.support(&v0), b.support(&-v0));
-            a_pts.push(supp_a.clone().into());
-            b_pts.push(supp_b.clone().into());
-            cache.nearest(supp_a - supp_b).unwrap()
+            (a.support(&v0), b.support(&-v0))
         };
 
-        loop {
-            let search_dir = -&nearest;
-            let (supp_a, supp_b) = (a.support(&search_dir), b.support(&-search_dir));
+        a_pts.push(supp_a.clone().into());
+        b_pts.push(supp_b.clone().into());
+
+        let mut prev_nearest: Option<Vect<T, A::Dims>> = None;
+
+        while let Some(nearest) = cache.nearest(supp_a - supp_b) {
+            if let Some(prev_nearest) = prev_nearest.take() {
+                if (prev_nearest - nearest.clone()).norm() < epsilon.into() {
+                    break;
+                }
+            }
+
+            {
+                let search_dir = &nearest;
+
+                // These probably look like their signs are flipped opposite to how they should be,
+                // but we're not negating the search direction; so, less sign flips.
+                supp_a = a.support(&-search_dir);
+                supp_b = b.support(search_dir);
+            }
+
             a_pts.set(cache.free_subset_slot(), supp_a.clone().into());
             b_pts.set(cache.free_subset_slot(), supp_b.clone().into());
-            nearest = match cache.nearest(supp_a - supp_b) {
-                Some(n) => {
-                    if (nearest.clone() - n.clone()).norm() > epsilon.into() {
-                        n
-                    } else {
-                        return (cache.from_barycentric(&a_pts), cache.from_barycentric(&b_pts));
-                    }
-                }
-                _ => return (cache.from_barycentric(&a_pts), cache.from_barycentric(&b_pts)), // TODO: Return something better (termination simplex.)
-            };
+
+            prev_nearest = Some(nearest);
         }
+
+        return GjkInfo {
+            cache: cache,
+            a: a,
+            a_pts: a_pts,
+            b: b,
+            b_pts: b_pts,
+        };
     }
 }
 
@@ -288,7 +329,7 @@ mod tests {
                                        vec![Point![0., -1.], Point![-3., -2.], Point![-1., 1.]])
         };
 
-        let (nearest_a, nearest_b) = triangle_a.gjk(&triangle_b);
+        let (nearest_a, nearest_b) = triangle_a.gjk(&triangle_b).nearest_points();
 
         debug!("Nearest point on a: {:?}, nearest point on b: {:?}.",
                nearest_a,
