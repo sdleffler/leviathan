@@ -1,7 +1,5 @@
-use std::cmp;
 use std::fmt;
 use std::iter::FromIterator;
-use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
@@ -26,13 +24,6 @@ use self::MaybeDropped::*;
 
 
 impl<T> MaybeDropped<T> {
-    fn unwrap(self) -> T {
-        match self {
-            Allocated(obj) => obj,
-            Dropped => unreachable!("Attempted to access dropped object!"),
-        }
-    }
-
     unsafe fn unchecked_unwrap(self) -> T {
         match self {
             Allocated(obj) => obj,
@@ -63,10 +54,6 @@ impl<T> MaybeDropped<T> {
             Allocated(_) => true,
             Dropped => false,
         }
-    }
-
-    fn is_dropped(&self) -> bool {
-        !self.is_allocated()
     }
 }
 
@@ -200,11 +187,11 @@ impl<E, D: Dim> Diceable<E, D> for () {
         D::from_usize(0)
     }
 
-    unsafe fn uninitialized(dim: D) -> () {
+    unsafe fn uninitialized(_: D) -> () {
         () // It's a fscking unit.
     }
 
-    unsafe fn forget_internals(mut self) {} // It's a fscking unit.
+    unsafe fn forget_internals(self) {} // It's a fscking unit.
 
     unsafe fn into_slice<'a>(&'a self) -> &'a [E] {
         &[]
@@ -442,10 +429,12 @@ impl<T, S: Size<T>> Data<T, S> {
 
         unsafe {
             data = Data::uninitialized(s);
+            ptr::write(&mut data[self.len()], t);
 
             for (i, val) in self.into_iter().enumerate() {
                 ptr::write(&mut data[i], val);
             }
+
         }
 
         data

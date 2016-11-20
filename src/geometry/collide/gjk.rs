@@ -1,4 +1,3 @@
-use geometry::primitive::Point;
 use geometry::shape::SupportMapping;
 use linalg::{Dot, Mat, Scalar, Vect, VectorNorm};
 use num::traits::Float;

@@ -1,11 +1,10 @@
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
-use std::ops::{AddAssign, SubAssign, Mul, Index, IndexMut};
+use std::ops::{Mul, Index, IndexMut};
 use std::ptr;
 
 use linalg::traits::*;
 use linalg::vector::*;
-use num::traits::*;
 use typehack::data::*;
 use typehack::dim::*;
 use typehack::binary::*;
@@ -652,9 +651,6 @@ impl<T: Scalar, M: Dim, N: Dim, L: Layout> IndexMut<[usize; 2]> for DenseMat<T, 
 
 #[cfg(test)]
 mod tests {
-    use linalg::*;
-    use typehack::binary::*;
-
     #[test]
     fn mat_test_index_column_major() {
         let a = Mat![#column [0, 1], [2, 3], [4, 5]];

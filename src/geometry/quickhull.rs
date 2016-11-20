@@ -1,7 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::mem;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
 
 use iter_exact::{ChainExactExt, CollectExactExt};
@@ -18,19 +16,43 @@ use typehack::prelude::*;
 
 
 pub trait QuickHullExt<T: Scalar, D: Dim> {
-    fn quick_hull(&self, D) -> ConvexHull<D>;
+    fn quick_hull(&self, D) -> ConvexHull<T, D>;
 }
 
 
 #[derive(Debug, Clone)]
-pub struct ConvexHull<D: Dim> {
-    pub points: Vec<PointIdx>,
-    pub facets: Vec<FacetIndices<D>>,
+pub struct ConvexHull<'a, T: Scalar + 'a, D: Dim + 'a> {
+    source: &'a [Point<T, D>],
+    facets: Vec<FacetIndices<D>>,
+}
+
+
+impl<'a, T: Clone + Scalar, D: Dim> ConvexHull<'a, T, D> {
+    pub fn cloned_points(&self) -> Vec<Point<T, D>> {
+        self.point_indices().into_iter().map(|idx| self.source[idx].clone()).collect()
+    }
+
+    pub fn cloned_facets(&self) -> Vec<Facet<T, D>> {
+        self.facets
+            .iter()
+            .map(|facet| facet.iter().map(|&PointIdx(idx)| self.source[idx].clone()).collect_exact())
+            .collect()
+    }
+
+    pub fn point_indices(&self) -> Vec<usize> {
+        let mut pt_list: Vec<usize> =
+            self.facets.iter().flat_map(|facet| facet.iter().map(|&PointIdx(idx)| idx)).collect();
+
+        pt_list.sort();
+        pt_list.dedup();
+
+        pt_list
+    }
 }
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PointIdx(pub usize);
+struct PointIdx(pub usize);
 
 impl From<usize> for PointIdx {
     fn from(i: usize) -> Self {
@@ -64,7 +86,7 @@ type QhFacetWeak<T: Scalar, D: Dim> = Weak<RefCell<QhElement<T, D>>>;
 
 
 impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
-    fn quick_hull(&self, dim: D) -> ConvexHull<D> {
+    fn quick_hull(&self, dim: D) -> ConvexHull<T, D> {
         debug!("Beginning quickhull with {} points in {} dimensions.",
                self.len(),
                dim.reify());
@@ -151,8 +173,6 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
         while !simplex.is_full() {
             let max_idx = {
-                let mut iter = pt_indices.iter();
-
                 let (mut max_dist, mut max_idx) = {
                     let idx = 0;
                     (simplex.distance(&self[usize::from(pt_indices[idx])], dim), idx)
@@ -220,7 +240,7 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
             debug!("Plane constructed from facet: {:?}.", plane);
 
-            let mut element: QhFacetRef<T, D> = Rc::new(RefCell::new(QhElement {
+            let element: QhFacetRef<T, D> = Rc::new(RefCell::new(QhElement {
                 facet: facet,
                 plane: plane,
                 outside: Vec::new(),
@@ -433,21 +453,15 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
                     plane
                 };
 
-                debug!("Generating (empty) outside set and allocating shared pointer...");
-
-                let new_outside = Vec::new();
-
                 debug!("Generating singleton neighbor set with neighbor {:?} and ridge {:?}...",
                        neighbor.borrow().facet,
                        ridge);
 
-                let mut new_neighbors = vec![(Rc::downgrade(&neighbor), ridge.clone())];
-
                 let new_element_rc = Rc::new(RefCell::new(QhElement {
                     facet: new_facet.clone(),
                     plane: new_plane,
-                    outside: new_outside,
-                    neighbors: new_neighbors,
+                    outside: Vec::new(),
+                    neighbors: vec![(Rc::downgrade(&neighbor), ridge.clone())],
                     visited: false,
                     dead: false,
                     self_ref: None,
@@ -568,27 +582,19 @@ impl<T: Scalar + Float, D: Dim> QuickHullExt<T, D> for [Point<T, D>] {
 
         debug!("Quickhull finished. Generating filtered point list...");
 
-        let mut pt_list = Vec::new();
-        let mut facet_list = Vec::new();
-
-        let elements = elements.into_iter().filter_map(|e| e.upgrade()).map(|e| {
-            mem::drop(e.borrow_mut().self_ref.take().unwrap());
-            Rc::try_unwrap(e).expect("Facet should only have one strong reference!").into_inner()
-        });
-
-        for element in elements {
-            for &pt_idx in element.facet.iter() {
-                pt_list.push(pt_idx);
-            }
-
-            facet_list.push(element.facet);
-        }
-
-        pt_list.sort();
-        pt_list.dedup(); // Is this step necessary?
+        let facet_list: Vec<_> = elements.into_iter()
+            .filter_map(|e| e.upgrade())
+            .map(|e| {
+                mem::drop(e.borrow_mut().self_ref.take().unwrap());
+                Rc::try_unwrap(e)
+                    .expect("Facet should only have one strong reference!")
+                    .into_inner()
+                    .facet
+            })
+            .collect();
 
         ConvexHull {
-            points: pt_list,
+            source: self,
             facets: facet_list,
         }
     }
@@ -600,6 +606,7 @@ mod tests {
     extern crate env_logger;
 
     use super::*;
+    use super::PointIdx;
 
     use typehack::prelude::*;
 
@@ -619,11 +626,15 @@ mod tests {
     }
 
     macro_rules! assert_pts {
-        ($hull:expr, $($p:expr),*) => ($(assert!($hull.points.contains(&PointIdx($p)));)*);
+        ($points:expr, $($p:expr),*) => ({
+            $(assert!($points.binary_search(&$p).is_ok());)*
+        });
     }
 
     macro_rules! assert_not_pts {
-        ($hull:expr, $($p:expr),*) => ($(assert!(!$hull.points.contains(&PointIdx($p)));)*);
+        ($points:expr, $($p:expr),*) => ({
+            $(assert!($points.binary_search(&$p).is_err());)*
+        });
     }
 
     #[test]
@@ -631,7 +642,7 @@ mod tests {
         let _ = env_logger::init();
 
         let triangle = vec![Point![1., 2.], Point![2., 3.], Point![4., 1.]];
-        let hull = triangle.quick_hull(B2::as_data());
+        let _ = triangle.quick_hull(B2::as_data());
     }
 
     #[test]
@@ -639,7 +650,7 @@ mod tests {
         let _ = env_logger::init();
 
         let triangle = vec![Point![0., -2.], Point![-2., 3.], Point![2., 4.]];
-        let hull = triangle.quick_hull(B2::as_data());
+        let _ = triangle.quick_hull(B2::as_data());
     }
 
     #[test]
@@ -734,7 +745,43 @@ mod tests {
         let hull = points.quick_hull(B2::as_data());
 
         debug!("hull: {:?}", hull);
-        assert_pts!(hull, 6, 14, 23, 30, 31, 32, 37, 39);
+
+        let point_indices = hull.point_indices();
+
+        assert_pts!(point_indices, 6, 14, 23, 30, 31, 32, 37, 39);
+        assert_not_pts!(point_indices,
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13,
+                        15,
+                        16,
+                        17,
+                        18,
+                        19,
+                        20,
+                        21,
+                        22,
+                        24,
+                        25,
+                        26,
+                        27,
+                        28,
+                        29,
+                        33,
+                        34,
+                        35,
+                        36,
+                        38);
     }
 
     #[test]
@@ -748,8 +795,10 @@ mod tests {
                                Point![2., 1., 2.]];
         let hull = tetrahedron.quick_hull(B3::as_data());
 
+        let point_indices = hull.point_indices();
+
         debug!("hull: {:?}", hull);
-        assert_pts!(hull, 0, 1, 2, 3, 4);
+        assert_pts!(point_indices, 0, 1, 2, 3, 4);
 
         assert_face!(hull, 1 => 3 => 2);
         assert_face!(hull, 0 => 1 => 2);
@@ -770,9 +819,11 @@ mod tests {
                                Point![0.5, 3., 1.7]];
         let hull = tetrahedron.quick_hull(B3::as_data());
 
+        let point_indices = hull.point_indices();
+
         debug!("hull: {:?}", hull);
-        assert_pts!(hull, 0, 1, 2, 3);
-        assert_not_pts!(hull, 4);
+        assert_pts!(point_indices, 0, 1, 2, 3);
+        assert_not_pts!(point_indices, 4);
 
         assert_face!(hull, 1 => 3 => 2);
         assert_face!(hull, 0 => 1 => 2);
@@ -791,9 +842,10 @@ mod tests {
                                Point![0.118838, 0.496147, 0.367041]];
         let hull = tetrahedron.quick_hull(B3::as_data());
 
+        let point_indices = hull.point_indices();
+
         debug!("hull: {:?}", hull);
-        assert_pts!(hull, 0, 1, 2, 3, 4);
-        // assert_not_pts!(hull);
+        assert_pts!(point_indices, 0, 1, 2, 3, 4);
 
         assert_face!(hull, 2 => 0 => 4);
         assert_face!(hull, 0 => 1 => 4);
@@ -815,10 +867,11 @@ mod tests {
                                Point![0.829540, 0.636103, 0.085375]];
 
         let hull = tetrahedron.quick_hull(B3::as_data());
+        let point_indices = hull.point_indices();
 
         debug!("hull: {:?}", hull);
-        assert_pts!(hull, 1, 2, 3, 4, 5);
-        assert_not_pts!(hull, 0);
+        assert_pts!(point_indices, 1, 2, 3, 4, 5);
+        assert_not_pts!(point_indices, 0);
 
         assert_face!(hull, 2 => 4 => 3);
         assert_face!(hull, 4 => 5 => 3);

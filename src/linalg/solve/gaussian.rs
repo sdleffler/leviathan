@@ -1,7 +1,6 @@
 use std::mem;
 
 use linalg::{Layout, Mat, Matrix, Scalar, Square, Vect, Vector};
-use num::traits::Float;
 use typehack::data::*;
 use typehack::dim::*;
 

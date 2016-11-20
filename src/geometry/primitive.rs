@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub, Index, IndexMut};
 
-use iter_exact::{ChainExactExt, CollectExactExt, FromExactSizeIterator};
+use iter_exact::{CollectExactExt, FromExactSizeIterator};
 
 use linalg::*;
 use linalg::solve::gaussian::GaussianNullspaceExt;
@@ -324,7 +324,7 @@ impl<'a, T: Scalar + Float, N: Dim> SimplexSubset<'a, T, N> {
 
             for (i, y_i) in simplex.iter().enumerate() {
                 for (j, y_j) in (i..).zip(&simplex[i..]) {
-                    dots[[i, j]] = simplex[j].clone().dot(y_i.clone());
+                    dots[[i, j]] = y_j.clone().dot(y_i.clone());
                     dots[[j, i]] = dots[[i, j]].clone();
                 }
             }

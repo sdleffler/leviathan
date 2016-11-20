@@ -1,5 +1,5 @@
 use geometry::primitive::Point;
-use geometry::quickhull::{PointIdx, QuickHullExt};
+use geometry::quickhull::QuickHullExt;
 use linalg::{Dot, VectorNorm, Scalar, Vect};
 use num::traits::Float;
 use typehack::dim::Dim;
@@ -145,12 +145,12 @@ pub struct Polygon<T: Scalar, D: Dim> {
 
 impl<T: Scalar + Float, D: Dim> Polygon<T, D> {
     pub fn from_convex_hull(dims: D, points: Vec<Point<T, D>>) -> Self {
-        let cvx_hull = points.quick_hull(dims);
+        let cvx_point_indices = points.quick_hull(dims).point_indices();
         Polygon {
             dims: dims,
             points: points.into_iter()
                 .enumerate()
-                .filter_map(|(i, p)| cvx_hull.points.binary_search(&PointIdx(i)).ok().and(Some(p)))
+                .filter_map(|(i, p)| cvx_point_indices.binary_search(&i).ok().and(Some(p)))
                 .collect(),
             centroid: None,
         }
