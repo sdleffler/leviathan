@@ -71,14 +71,13 @@ macro_rules! Vect6 {
 pub mod matrix;
 pub use self::matrix::*;
 
-pub mod solve;
-pub mod lp;
-
 pub mod traits;
 pub use self::traits::*;
 
 pub mod vector;
 pub use self::vector::*;
+
+pub mod algorithm;
 
 
 pub type Mat<T, M, N, L = Column> = DenseMat<T, M, N, L>;

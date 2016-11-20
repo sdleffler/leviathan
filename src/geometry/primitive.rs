@@ -3,7 +3,7 @@ use std::ops::{Add, Sub, Index, IndexMut};
 use iter_exact::{CollectExactExt, FromExactSizeIterator};
 
 use linalg::*;
-use linalg::solve::gaussian::GaussianNullspaceExt;
+use linalg::algorithm::solve::gaussian::GaussianNullspaceExt;
 use num::traits::Float;
 use typehack::prelude::*;
 use typehack::data;

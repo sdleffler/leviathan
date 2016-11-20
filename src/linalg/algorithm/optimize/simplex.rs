@@ -1,7 +1,8 @@
+use super::LinearProgram;
+
 use iter_exact::CollectExactExt;
 
 use linalg::{Matrix, MatrixIdentity, Mat, Row, Scalar, Vector, Vect};
-use linalg::lp::LinearProgram;
 use num::traits::Float;
 use typehack::data::{Data, Size};
 use typehack::dim::{Dim, DimAdd, DimMul};
@@ -112,8 +113,8 @@ impl<T: Clone + Scalar + Float,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::*;
 
-    use linalg::lp::*;
     use linalg::{Dot, VectorNorm};
 
     #[test]

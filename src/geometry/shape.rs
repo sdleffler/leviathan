@@ -1,5 +1,5 @@
 use geometry::primitive::Point;
-use geometry::quickhull::QuickHullExt;
+use geometry::algorithm::quickhull::QuickHullExt;
 use linalg::{Dot, VectorNorm, Scalar, Vect};
 use num::traits::Float;
 use typehack::dim::Dim;
